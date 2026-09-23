@@ -137,6 +137,52 @@ def format_rss_news_for_speech(headlines: List[str]) -> str:
     return speech
 
 
+def get_conversational_chat_reply(user_message: str) -> str:
+    """Uses Gemini API to generate a concise, conversational spoken response to any user query."""
+    key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
+    cleaned = user_message.lower().strip()
+
+    # Fast canned responses for greetings and persona questions
+    if any(cleaned == g or cleaned.startswith(g + " ") for g in ["hello", "hi", "hey", "hello jad", "hi jad", "hey jad", "hello jaat", "namaste"]):
+        return f"Hello {USER_TITLE}! I am JAD, your morning assistant. I am fully operational and ready to assist you. What can I do for you?"
+
+    if any(k in cleaned for k in ["how are you", "how are you doing", "how r u"]):
+        return f"I am feeling great and running at peak performance, {USER_TITLE}! Ready to help you seize the day."
+
+    if any(k in cleaned for k in ["who are you", "what are you", "what is your name"]):
+        return f"I am JAD, your autonomous agentic morning assistant. I monitor your daily schedule, wake you up at 6:00 AM, and brief you on the latest world news."
+
+    # If Gemini API key is available, query Gemini for a natural spoken response
+    if key:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={key}"
+        sys_prompt = (
+            f"You are JAD, an intelligent, energetic personal morning assistant for '{USER_TITLE}'. "
+            "Reply conversationally in 1-2 concise, spoken English sentences without markdown or emojis. "
+            f"User asks: {user_message}"
+        )
+        payload = {"contents": [{"parts": [{"text": sys_prompt}]}]}
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=8) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    text_pieces = [p.get("text", "") for p in parts if "text" in p]
+                    reply = " ".join(text_pieces)
+                    if reply.strip():
+                        return clean_tts_text(reply)
+        except Exception:
+            pass
+
+    return f"I heard you, {USER_TITLE}. You can ask me to 'read the latest news', 'test alarm', or say 'that is all'."
+
+
 def get_morning_news_speech() -> str:
     """
     Main function to get news briefing:

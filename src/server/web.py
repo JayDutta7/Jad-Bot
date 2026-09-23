@@ -10,11 +10,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 try:
     from src.core.config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
     from src.platform_util.desktop import get_platform_name
-    from src.services.news import fetch_news_via_rss, get_morning_news_speech
+    from src.services.news import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
 except ImportError:
     from config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
     from desktop_helper import get_platform_name
-    from news_service import fetch_news_via_rss, get_morning_news_speech
+    from news_service import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
 
 UI_DIR = os.path.join(BASE_DIR, "ui")
 MAX_REQUEST_BODY_SIZE = 65536  # 64 KB max payload to prevent Denial of Service
@@ -251,7 +251,7 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         elif any(w in cleaned for w in ["that's all", "that is all", "stop", "exit", "bye", "thanks", "thank you"]):
             reply = f"Have an outstanding day ahead, {USER_TITLE}! I will stand by for tomorrow's 6:00 AM wake up."
         else:
-            reply = f"I heard: '{user_msg}'. You can ask me to 'read the latest news', 'test alarm', or say 'that is all'."
+            reply = get_conversational_chat_reply(user_msg)
 
         BotAPIServer.last_spoken_message = reply
         BotAPIServer.transcript.append({"sender": "bot", "text": reply})
