@@ -30,13 +30,17 @@
         </div>
       </div>
 
-      <!-- Real-Time IST Clock & Status Pill -->
+      <!-- Real-Time IST Clock & Weather Pill -->
       <div class="header-center">
         <div class="clock-card" id="clockCard">
           <div class="clock-label">
             <span class="live-dot"></span> ASIA/KOLKATA (GMT+5:30)
           </div>
           <div class="clock-time" id="liveClock">--:--:-- --</div>
+        </div>
+        <div class="weather-pill" id="weatherPill" title="Today's Live Weather Forecast">
+          <span class="weather-icon" id="weatherIcon">⛅</span>
+          <span class="weather-temp" id="weatherTemp">Checking Weather...</span>
         </div>
       </div>
 
@@ -139,6 +143,10 @@
             <span class="btn-icon">⚡</span>
             <span class="btn-label">Simulate 6:00 AM Wake</span>
           </button>
+          <button class="action-btn btn-secondary" id="btnWeather" title="Report today's live weather forecast">
+            <span class="btn-icon">⛅</span>
+            <span class="btn-label">Today's Weather</span>
+          </button>
           <button class="action-btn btn-secondary" id="btnTestAlarm" title="Test alarm audio for 5 seconds">
             <span class="btn-icon">🔔</span>
             <span class="btn-label">Test Alarm (5s)</span>
@@ -179,7 +187,7 @@
               <div class="bubble-content">
                 <div class="bubble-author">J.A.D. Morning Assistant</div>
                 <div class="bubble-text" id="initialBotGreeting">
-                  Good morning Boss. Systems operational. I will sound your alarm at 6:00 AM IST, listen for your greeting, and deliver your morning briefing.
+                  Hello Boss, how may I help you?
                 </div>
               </div>
             </div>

@@ -20,6 +20,7 @@ from src.platform_util.desktop import (
     show_desktop_notification,
 )
 from src.services.news import get_morning_news_speech
+from src.services.weather import get_current_weather
 
 
 class WakeUpBot:
@@ -31,6 +32,12 @@ class WakeUpBot:
         self.voice = VoiceEngine()
         self.sleep_preventer = DesktopSleepPreventer()
         self.platform_name = get_platform_name()
+
+    def speak_welcome_greeting(self, blocking: bool = True) -> str:
+        """Speaks the opening greeting: 'Hello Boss, how may I help you?'"""
+        welcome_text = f"Hello {USER_TITLE}, how may I help you?"
+        self.voice.speak(welcome_text, blocking=blocking)
+        return welcome_text
 
     def get_current_time(self) -> datetime:
         """Returns current localized datetime in GMT +5:30."""
@@ -103,6 +110,12 @@ class WakeUpBot:
                 self.voice.speak(f"Fetching the latest English news for you, {USER_TITLE}...")
                 speech_text = get_morning_news_speech()
                 self.voice.speak(speech_text)
+                self.voice.speak(f"Is there anything else I can help you with, {USER_TITLE}?")
+            elif any(keyword in cleaned_cmd for keyword in ["weather", "temperature", "forecast", "climate", "rain", "umbrella"]):
+                show_desktop_notification("⛅ Today's Weather", "Fetching today's weather forecast...")
+                self.voice.speak(f"Checking today's weather for you, {USER_TITLE}...")
+                weather_data = get_current_weather()
+                self.voice.speak(weather_data["spoken_text"])
                 self.voice.speak(f"Is there anything else I can help you with, {USER_TITLE}?")
             elif any(keyword in cleaned_cmd for keyword in ["no", "that's all", "that is all", "stop", "exit", "thank you", "thanks", "bye"]):
                 self.voice.speak(f"Have an awesome and productive day ahead, {USER_TITLE}!")

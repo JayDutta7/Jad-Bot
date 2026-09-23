@@ -35,6 +35,8 @@
 | Feature | Description | Platform Support |
 | :--- | :--- | :--- |
 | **🤖 3D AI Hologram** | Real-time orbital ring animations, audio reactive waves, and dynamic state aura. | Browser / Desktop UI |
+| **👋 Spoken Welcome** | Voice greeting on launch: *"Hello Boss, how may I help you?"* | macOS say / SAPI5 |
+| **⛅ Real-Time Weather** | Live local weather & forecasts with umbrella / hydration advice. | wttr.in / Open-Meteo |
 | **⏰ Precision Alarm** | High-pitch WAV tone generator built using pure standard library (`wave` + `struct`). | macOS, Windows, Linux, Android |
 | **🗣️ Conversational Voice** | Bi-directional voice engine supporting macOS `say`, Windows SAPI5, and Web Speech STT. | macOS, Windows, Android |
 | **📰 Morning Briefing** | Live breaking news in conversational spoken English with zero markdown artifacts. | Global (Gemini / RSS) |
@@ -116,6 +118,9 @@ python3 main.py --test-notification
 
 # 5. Fetch and speak today's morning news briefing
 python3 main.py --test-news
+
+# 6. Fetch and speak today's live weather forecast
+python3 main.py --test-weather
 ```
 
 ---
@@ -134,7 +139,8 @@ jad-bot/
 │   │   ├── alarm.py           # Cross-platform AlarmController & tone generator
 │   │   └── voice.py           # VoiceEngine (macOS say, Windows SAPI/pyttsx3)
 │   ├── services/              # External intelligence & data feeds
-│   │   └── news.py            # Gemini API & RSS news parser
+│   │   ├── news.py            # Gemini API & RSS news parser
+│   │   └── weather.py         # Real-time weather client (wttr.in / Open-Meteo)
 │   ├── platform_util/         # OS detection, wake-locks & notifications
 │   │   └── desktop.py         # Caffeinate, SetThreadExecutionState, notifications
 │   └── server/                # Local UI & REST API server

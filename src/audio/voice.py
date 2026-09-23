@@ -4,6 +4,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 
 try:
     from src.platform_util.desktop import is_termux
@@ -61,8 +62,13 @@ class VoiceEngine:
         except Exception as e:
             print(f"[Windows TTS Notice]: {e}")
 
-    def speak(self, text: str):
+    def speak(self, text: str, blocking: bool = True):
         """Speaks out the given text using the best available platform TTS engine."""
+        if not blocking:
+            t = threading.Thread(target=self.speak, args=(text, True), daemon=True)
+            t.start()
+            return
+
         print(f"\n[Bot Says]: {text}\n")
 
         # 1. Android Termux TTS

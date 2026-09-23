@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description="Daily 6:00 AM Wake Up & News Assistant Bot (macOS, Windows, Android)")
     parser.add_argument("--now", action="store_true", help="Trigger the alarm and morning routine right now for testing")
     parser.add_argument("--test-news", action="store_true", help="Fetch and speak the latest English news right now")
+    parser.add_argument("--test-weather", action="store_true", help="Fetch and speak today's weather forecast right now")
     parser.add_argument("--test-alarm", action="store_true", help="Test the device alarm sound for 5 seconds")
     parser.add_argument("--test-notification", action="store_true", help="Test desktop banner/toast notification")
     parser.add_argument("--status", action="store_true", help="Show current time in GMT+5:30 and countdown to next alarm")
@@ -53,6 +54,14 @@ def main():
         bot.voice.speak(speech)
         return
 
+    if args.test_weather:
+        print("[Test] Fetching today's weather forecast...")
+        from src.services.weather import get_current_weather
+        weather_data = get_current_weather()
+        print(f"[Weather Report]:\n{weather_data['spoken_text']}\n")
+        bot.voice.speak(weather_data['spoken_text'])
+        return
+
     if args.status:
         now = bot.get_current_time()
         secs, target = bot.get_seconds_until_next_alarm()
@@ -76,6 +85,9 @@ def main():
             server_thread.start()
         except Exception as e:
             print(f"[Web UI Notice]: Could not start Web UI server: {e}. Falling back to CLI mode.")
+
+    # Speak opening welcome greeting when bot opens
+    bot.speak_welcome_greeting()
 
     # Normal scheduled mode
     try:

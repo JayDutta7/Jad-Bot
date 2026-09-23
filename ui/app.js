@@ -49,6 +49,10 @@ const DOM = {
   browserAlarmAudio: document.getElementById('browserAlarmAudio'),
   visualizerCanvas: document.getElementById('visualizerCanvas'),
   ambientCanvas: document.getElementById('ambientCanvas'),
+  weatherPill: document.getElementById('weatherPill'),
+  weatherIcon: document.getElementById('weatherIcon'),
+  weatherTemp: document.getElementById('weatherTemp'),
+  btnWeather: document.getElementById('btnWeather'),
 };
 
 // ==============================================================================
@@ -404,6 +408,33 @@ DOM.btnFetchNews.addEventListener('click', async () => {
   }
 });
 
+if (DOM.btnWeather) {
+  DOM.btnWeather.addEventListener('click', async () => {
+    setAgentState('thinking');
+    appendChatMessage('user', "What's today's weather?");
+    appendChatMessage('bot', `Checking real-time meteorological reports for you, ${STATE.userTitle}...`);
+    try {
+      const res = await fetch('/api/weather');
+      const data = await res.json();
+      setAgentState('speaking');
+      const speech = data.speech || "Today's forecast is clear Boss.";
+      appendChatMessage('bot', `⛅ ${speech}`);
+      // Request backend to speak aloud
+      fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: speech }),
+      }).catch(() => {});
+      setTimeout(() => {
+        if (STATE.agentState === 'speaking') setAgentState('idle');
+      }, 6500);
+    } catch (e) {
+      setAgentState('idle');
+      appendChatMessage('bot', "Could not retrieve live weather at the moment, Boss.");
+    }
+  });
+}
+
 DOM.wakeLockBtn.addEventListener('click', async () => {
   try {
     const res = await fetch('/api/toggle-sleep', { method: 'POST' });
@@ -640,3 +671,68 @@ async function loadNewsHeadlines() {
 
 DOM.btnRefreshNews.addEventListener('click', loadNewsHeadlines);
 loadNewsHeadlines();
+
+// ==============================================================================
+// 10. WEATHER REFRESH & WELCOME GREETING
+// ==============================================================================
+function getWeatherEmoji(condition = '') {
+  const c = condition.toLowerCase();
+  if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
+  if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+  if (c.includes('snow') || c.includes('ice') || c.includes('sleet')) return '❄️';
+  if (c.includes('cloud') || c.includes('overcast')) return '☁️';
+  if (c.includes('fog') || c.includes('mist') || c.includes('haze')) return '🌫️';
+  if (c.includes('sun') || c.includes('clear')) return '☀️';
+  return '⛅';
+}
+
+async function loadWeather() {
+  if (!DOM.weatherPill) return;
+  try {
+    const res = await fetch('/api/weather');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.status === 'ok') {
+      const temp = data.temp_c != null ? `${data.temp_c}°C` : '--';
+      const cond = data.condition || 'Clear';
+      const city = data.city || 'Kolkata';
+      if (DOM.weatherTemp) {
+        DOM.weatherTemp.textContent = `${temp} • ${cond} (${city})`;
+      }
+      if (DOM.weatherIcon) {
+        DOM.weatherIcon.textContent = getWeatherEmoji(cond);
+      }
+      DOM.weatherPill.title = data.speech || `Current weather: ${temp}, ${cond} in ${city}. Click to hear forecast.`;
+    }
+  } catch (err) {
+    if (DOM.weatherTemp) DOM.weatherTemp.textContent = 'Weather Online';
+  }
+}
+
+if (DOM.weatherPill) {
+  DOM.weatherPill.addEventListener('click', () => {
+    if (DOM.btnWeather) DOM.btnWeather.click();
+  });
+}
+
+async function initWelcomeGreeting() {
+  try {
+    const res = await fetch('/api/welcome', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      console.log('Welcome response:', data);
+    }
+  } catch (err) {
+    if ('speechSynthesis' in window && !window.__jadWelcomeSpoken) {
+      window.__jadWelcomeSpoken = true;
+      const u = new SpeechSynthesisUtterance('Hello Boss, how may I help you?');
+      window.speechSynthesis.speak(u);
+    }
+  }
+}
+
+// Initialize Weather & Welcome Greeting
+loadWeather();
+setInterval(loadWeather, 10 * 60 * 1000);
+initWelcomeGreeting();
+

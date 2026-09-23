@@ -11,10 +11,12 @@ try:
     from src.core.config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
     from src.platform_util.desktop import get_platform_name
     from src.services.news import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
+    from src.services.weather import get_current_weather
 except ImportError:
     from config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
     from desktop_helper import get_platform_name
     from news_service import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
+    from services.weather import get_current_weather
 
 UI_DIR = os.path.join(BASE_DIR, "ui")
 MAX_REQUEST_BODY_SIZE = 65536  # 64 KB max payload to prevent Denial of Service
@@ -24,9 +26,9 @@ class BotAPIServer:
     """Manages bot instance reference and shared state for the Web API."""
     bot_instance = None
     agent_state = "idle"  # idle, ringing, listening, thinking, speaking
-    last_spoken_message = f"Hello {USER_TITLE}, I am your Morning Assistant. I will wake you up at 6:00 AM IST!"
+    last_spoken_message = f"Hello {USER_TITLE}, how may I help you?"
     transcript = [
-        {"sender": "bot", "text": f"System online. Monitoring for 6:00 AM IST. How can I help you today, {USER_TITLE}?"}
+        {"sender": "bot", "text": f"Hello {USER_TITLE}, how may I help you?"}
     ]
 
 
@@ -94,6 +96,9 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         elif path == "/api/news":
             self._handle_get_news()
             return
+        elif path == "/api/weather":
+            self._handle_get_weather()
+            return
         elif path == "/alarm_sound.wav":
             if os.path.exists(ALARM_FILE):
                 with open(ALARM_FILE, "rb") as f:
@@ -141,6 +146,8 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             self._handle_stop_alarm()
         elif path == "/api/trigger-routine":
             self._handle_trigger_routine()
+        elif path == "/api/welcome":
+            self._handle_welcome()
         elif path == "/api/chat":
             self._handle_chat(body)
         elif path == "/api/speak":
@@ -230,6 +237,19 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         headlines = fetch_news_via_rss(max_items=6)
         self._send_json_response({"headlines": headlines})
 
+    def _handle_get_weather(self):
+        weather_data = get_current_weather()
+        self._send_json_response(weather_data)
+
+    def _handle_welcome(self):
+        bot = BotAPIServer.bot_instance
+        welcome_text = f"Hello {USER_TITLE}, how may I help you?"
+        BotAPIServer.last_spoken_message = welcome_text
+        if bot:
+            import threading
+            threading.Thread(target=bot.speak_welcome_greeting, daemon=True).start()
+        self._send_json_response({"message": welcome_text})
+
     def _handle_chat(self, body: dict):
         bot = BotAPIServer.bot_instance
         user_msg = str(body.get("message", "")).strip()[:1000]
@@ -248,6 +268,9 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             reply = f"Good morning {USER_TITLE}! Wishing you an energizing and productive day ahead!"
         elif any(w in cleaned for w in ["news", "headline", "headlines", "latest"]):
             reply = get_morning_news_speech()
+        elif any(w in cleaned for w in ["weather", "temperature", "forecast", "climate", "rain", "umbrella", "how is the weather", "what is the weather"]):
+            weather_data = get_current_weather()
+            reply = weather_data.get("spoken_text", f"The weather report is currently being updated for {USER_TITLE}.")
         elif any(w in cleaned for w in ["that's all", "that is all", "stop", "exit", "bye", "thanks", "thank you"]):
             reply = f"Have an outstanding day ahead, {USER_TITLE}! I will stand by for tomorrow's 6:00 AM wake up."
         else:
