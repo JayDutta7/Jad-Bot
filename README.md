@@ -32,13 +32,6 @@
 
 ---
 
-## 🎨 Animated AI Agent Dashboard
-
-JAD features a cyberpunk, glassmorphic visual interface served locally via a zero-dependency Python HTTP server (`http://localhost:8000`):
-
-
----
-
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
