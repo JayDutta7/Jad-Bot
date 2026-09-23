@@ -11,15 +11,6 @@
 
 <br/>
 
-```
-     ██╗ █████╗ ██████╗      █████╗ ██╗    ██████╗  ██████╗ ████████╗
-     ██║██╔══██╗██╔══██╗    ██╔══██╗██║    ██╔══██╗██╔═══██╗╚══██╔══╝
-     ██║███████║██║  ██║    ███████║██║    ██████╔╝██║   ██║   ██║   
-██   ██║██╔══██║██║  ██║    ██╔══██║██║    ██╔══██╗██║   ██║   ██║   
-╚█████╔╝██║  ██║██████╔╝    ██║  ██║██║    ██████╔╝╚██████╔╝   ██║   
- ╚════╝ ╚═╝  ╚═╝╚═════╝     ╚═╝  ╚═╝╚═╝    ╚═════╝  ╚═════╝    ╚═╝   
-```
-
 **An intelligent autonomous companion engineered in Python to orchestrate precision routines, interactive voice conversations, and real-time morning intelligence briefings.**
 
 [Key Features](#-features) • [Visual UI/UX](#-animated-ai-agent-dashboard) • [Quick Start](#-quick-start) • [Architecture](#-project-architecture) • [Security](#-security-hardening)
