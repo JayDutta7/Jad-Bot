@@ -28,22 +28,7 @@
 - 🌐 **Live Intelligence Synthesis**: Dispatches real-time web grounding via **Google Gemini API** (`gemini-3.6-flash`) with automatic fallback to live verified RSS news feeds.
 - 🔋 **Desktop-Aware Energy Management**: Automatically acquires system wake-locks (`caffeinate` on Mac, `SetThreadExecutionState` on Windows) so your laptop never sleeps through an alarm.
 
----
 
-## ✨ Features
-
-| Feature | Description | Platform Support |
-| :--- | :--- | :--- |
-| **🎙️ Wake Word Activation** | Say *"Hello Jad"*, *"Hey Jad"*, or *"Activate Jad"* to automatically wake and activate the agent hands-free. | Cross-Platform / Web |
-| **🤖 3D AI Hologram** | Real-time orbital ring animations, audio reactive waves, and dynamic state aura. | Browser / Desktop UI |
-| **👋 Dynamic Spoken Welcome** | Voice greeting based on local time (*Good morning / noon / afternoon / evening Boss, how may I help you?*) | macOS say / SAPI5 |
-| **⏰ Adaptive Alarm** | Default 6:30 AM weekdays, 7:00 AM Sundays; adjust anytime by voice or chat. | Cross-Platform |
-| **📍 Smart Geolocation** | Automatic GPS lat/long detection with interactive place-name geocoding fallback. | HTML5 / Open-Meteo |
-| **⛅ Real-Time Weather** | Live local weather & forecasts with umbrella / hydration advice. | wttr.in / Open-Meteo |
-| **🗣️ Conversational Voice** | Bi-directional voice engine supporting macOS `say`, Windows SAPI5, and Web Speech STT. | macOS, Windows, Android |
-| **📰 Morning Briefing** | Live breaking news in conversational spoken English with zero markdown artifacts. | Global (Gemini / RSS) |
-| **🛡️ Zero-Dependency Core** | Runs 100% out-of-the-box using the Python 3.9+ standard library. | Cross-Platform |
-| **🔒 Security Hardened** | Protected against XSS, command injection, and cross-origin hijacking. | End-to-End |
 
 ---
 
@@ -127,40 +112,6 @@ python3 main.py --test-weather
 
 ---
 
-## 📁 Project Architecture
-
-The codebase follows a modular package architecture under `src/`:
-
-```
-jad-bot/
-├── src/
-│   ├── core/                  # Configuration & bot orchestrator
-│   │   ├── config.py          # Environment settings loader
-│   │   └── bot.py             # WakeUpBot scheduling & routine coordinator
-│   ├── audio/                 # Audio playback & voice synthesis
-│   │   ├── alarm.py           # Cross-platform AlarmController & tone generator
-│   │   └── voice.py           # VoiceEngine (macOS say, Windows SAPI/pyttsx3)
-│   ├── services/              # External intelligence & data feeds
-│   │   ├── news.py            # Gemini API & RSS news parser
-│   │   └── weather.py         # Real-time weather client (wttr.in / Open-Meteo)
-│   ├── platform_util/         # OS detection, wake-locks & notifications
-│   │   └── desktop.py         # Caffeinate, SetThreadExecutionState, notifications
-│   └── server/                # Local UI & REST API server
-│       └── web.py             # Hardened ThreadingHTTPServer & endpoints
-├── assets/                    # Audio tone assets (alarm_sound.wav)
-├── ui/                        # Web dashboard static files (HTML, CSS, JS)
-├── tests/                     # Automated unit and security test suite
-│   ├── test_desktop.py        # Desktop platform & speech tests
-│   └── test_security.py       # CORS, DoS, and permission tests
-├── .env                       # Local secrets (chmod 600, gitignored)
-├── .gitignore                 # Protected git rules
-├── main.py                    # Root entrypoint
-├── requirements.txt           # Optional dependencies for physical mic STT
-├── run_desktop_mac.sh         # macOS one-click launcher
-└── run_desktop_windows.bat    # Windows one-click launcher
-```
-
----
 
 ## 🔑 Gemini API Configuration (Optional)
 
@@ -170,21 +121,6 @@ To configure your key, add it to `.env`:
 
 ```env
 GEMINI_API_KEY="AIzaSy...your_gemini_api_key_here"
-```
-
----
-
-## 🛡️ Security Hardening
-
-- 🔒 **XSS Defense**: UI dynamically renders news headlines strictly using safe `textContent` DOM nodes.
-- 🛡️ **Command Injection Immunity**: Replaced shell string formatting (`os.system`) with native Windows API `SetConsoleTitleW` and parameter bindings for AppleScript (`on run argv`) and PowerShell (`$args[0]`).
-- 🌐 **Strict CORS Policy**: Local API rejects all non-localhost origins with `403 Forbidden`.
-- 🛑 **DoS Protection**: Incoming HTTP request payloads are strictly capped at 64KB (`413 Payload Too Large`).
-- 🔐 **Secrets Protection**: `.env` is locked to `chmod 600` and permanently ignored in `.gitignore`.
-
-Run the automated test suite:
-```bash
-python3 -m unittest -v tests/test_desktop.py tests/test_security.py
 ```
 
 ---

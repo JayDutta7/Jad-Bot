@@ -66,8 +66,8 @@ def main():
         now = bot.get_current_time()
         secs, target = bot.get_seconds_until_next_alarm()
         print(f"Platform:               {bot.platform_name}")
-        print(f"Current Time (GMT+5:30): {now.strftime('%Y-%m-%d %I:%M:%S %p')}")
-        print(f"Next 6:00 AM Alarm:     {target.strftime('%Y-%m-%d %I:%M:%S %p')}")
+        print(f"Current Time (GMT+5:30): {now.strftime('%d/%m/%Y %I:%M:%S %p')}")
+        print(f"Next Alarm:             {target.strftime('%d/%m/%Y %I:%M:%S %p')}")
         print(f"Time Remaining:         {int(secs//3600)}h {int((secs%3600)//60)}m {int(secs%60)}s")
         return
 

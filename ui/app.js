@@ -25,7 +25,8 @@ function getTimeOfDay() {
   if (hour >= 5 && hour < 12) return 'morning';
   if (hour === 12) return 'noon';
   if (hour >= 13 && hour < 17) return 'afternoon';
-  return 'evening';
+  if (hour >= 17 && hour < 19) return 'evening';
+  return 'night';
 }
 
 function getTimeOfDayGreeting() {
@@ -33,7 +34,8 @@ function getTimeOfDayGreeting() {
   if (tod === 'morning') return 'Good morning';
   if (tod === 'noon') return 'Good noon';
   if (tod === 'afternoon') return 'Good afternoon';
-  return 'Good evening';
+  if (tod === 'evening') return 'Good evening';
+  return 'Good night';
 }
 
 function getActiveGreeting() {
@@ -309,7 +311,7 @@ function stopBrowserAlarmTone() {
 // 5. CLOCK & COUNTDOWN ENGINE (GMT+5:30)
 // ==============================================================================
 function updateLiveClockAndCountdown() {
-  // Compute current time in Asia/Kolkata (GMT+5:30)
+  // Compute current time in Asia/Kolkata (GMT+5:30) with dd/mm/yyyy date format
   const now = new Date();
   const options = {
     timeZone: 'Asia/Kolkata',
@@ -321,8 +323,17 @@ function updateLiveClockAndCountdown() {
     second: '2-digit',
     hour12: true,
   };
-  const formatter = new Intl.DateTimeFormat('en-US', options);
-  DOM.liveClock.textContent = formatter.format(now);
+  const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(now);
+  const partMap = {};
+  parts.forEach(p => partMap[p.type] = p.value);
+  const day = partMap.day;
+  const month = partMap.month;
+  const year = partMap.year;
+  const hour = partMap.hour;
+  const minute = partMap.minute;
+  const second = partMap.second;
+  const dayPeriod = (partMap.dayPeriod || '').toUpperCase();
+  DOM.liveClock.textContent = `${day}/${month}/${year} ${hour}:${minute}:${second} ${dayPeriod}`.trim();
 
   // If backend target alarm is known, compute precise diff
   if (STATE.targetAlarmIso) {
@@ -379,7 +390,7 @@ async function fetchStatus() {
     if (!res.ok) return;
     const data = await res.json();
 
-    if (data.platform) DOM.platformText.textContent = data.platform;
+    if (data.platform && DOM.platformText) DOM.platformText.textContent = data.platform;
     if (data.user_title) STATE.userTitle = data.user_title;
     if (data.next_alarm_iso) STATE.targetAlarmIso = data.next_alarm_iso;
     if (data.greeting) STATE.serverGreeting = data.greeting;
@@ -758,8 +769,8 @@ function activateAgentByWakeWord(heardText = '', commandAfterWake = '') {
     DOM.chatForm.dispatchEvent(new Event('submit'));
     setTimeout(() => { isActivatingFromWake = false; }, 2000);
   } else {
-    // User said "Hello Jad", agent responds aloud and begins listening for follow-up!
-    const wakeReply = `Hello ${STATE.userTitle}, how may I help you?`;
+    // User said "Hello Jad", bot replies "How may I help you Boss?", then listens for prompt!
+    const wakeReply = `How may I help you ${STATE.userTitle}?`;
     appendChatMessage('bot', wakeReply);
     setAgentState('speaking');
 
@@ -770,11 +781,11 @@ function activateAgentByWakeWord(heardText = '', commandAfterWake = '') {
       body: JSON.stringify({ text: wakeReply }),
     }).catch(() => {});
 
-    // After acknowledgment, automatically start listening for user's command!
+    // After acknowledgment, automatically start listening for user's prompt!
     setTimeout(() => {
       isActivatingFromWake = false;
       startListening();
-    }, 2400);
+    }, 1800);
   }
 }
 

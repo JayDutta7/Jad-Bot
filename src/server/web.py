@@ -225,10 +225,10 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             "user_title": USER_TITLE,
             "alarm_hour": ALARM_HOUR,
             "alarm_minute": ALARM_MINUTE,
-            "current_time_str": now.strftime("%Y-%m-%d %I:%M:%S %p"),
+            "current_time_str": now.strftime("%d/%m/%Y %I:%M:%S %p"),
             "current_time_iso": now.isoformat(),
             "next_alarm_iso": target.isoformat(),
-            "next_alarm_str": target.strftime("%Y-%m-%d %I:%M:%S %p"),
+            "next_alarm_str": target.strftime("%d/%m/%Y %I:%M:%S %p"),
             "seconds_remaining": max(0, int(secs)),
             "is_ringing": is_ringing,
             "sleep_prevention_active": sleep_active,
@@ -375,7 +375,7 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         self._send_json_response({
             "status": "ok",
             "message": msg,
-            "next_alarm_str": target.strftime("%Y-%m-%d %I:%M:%S %p"),
+            "next_alarm_str": target.strftime("%d/%m/%Y %I:%M:%S %p"),
             "next_alarm_iso": target.isoformat(),
             "seconds_remaining": max(0, int(secs))
         })

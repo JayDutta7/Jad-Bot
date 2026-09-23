@@ -47,11 +47,12 @@ USER_TITLE = "Boss"
 
 def get_time_of_day(dt: Optional[datetime] = None) -> str:
     """
-    Returns 'morning', 'noon', 'afternoon', or 'evening' based on current local time in TIMEZONE:
+    Returns 'morning', 'noon', 'afternoon', 'evening', or 'night' based on local time:
     - 05:00 - 11:59: 'morning'
     - 12:00 - 12:59: 'noon'
     - 13:00 - 16:59: 'afternoon'
-    - 17:00 - 23:59 & 00:00 - 04:59: 'evening'
+    - 17:00 - 18:59 (5 PM to 7 PM): 'evening'
+    - 19:00 - 04:59 (7 PM to 5 AM): 'night'
     """
     if dt is None:
         try:
@@ -66,13 +67,15 @@ def get_time_of_day(dt: Optional[datetime] = None) -> str:
         return "noon"
     elif 13 <= hour < 17:
         return "afternoon"
-    else:
+    elif 17 <= hour < 19:
         return "evening"
+    else:
+        return "night"
 
 
 def get_time_of_day_greeting(dt: Optional[datetime] = None) -> str:
     """
-    Returns 'Good morning', 'Good noon', 'Good afternoon', or 'Good evening' based on local time.
+    Returns 'Good morning', 'Good noon', 'Good afternoon', 'Good evening', or 'Good night' based on local time.
     """
     tod = get_time_of_day(dt)
     if tod == "morning":
@@ -81,8 +84,10 @@ def get_time_of_day_greeting(dt: Optional[datetime] = None) -> str:
         return "Good noon"
     elif tod == "afternoon":
         return "Good afternoon"
-    else:
+    elif tod == "evening":
         return "Good evening"
+    else:
+        return "Good night"
 
 
 def get_greeting_response(dt: Optional[datetime] = None) -> str:
@@ -101,11 +106,12 @@ GREETING_TRIGGERS = [
     "good noon", "noon",
     "good afternoon", "afternoon",
     "good evening", "evening",
+    "good night", "night",
     "hello", "hi", "hey"
 ]
 GREETING_RESPONSE = f"Good morning {USER_TITLE}, how can I help you?"
 WAKE_WORDS = ["hello jad", "hey jad", "hi jad", "jad", "activate jad"]
-WAKE_RESPONSE = f"Hello {USER_TITLE}, I am active and listening. How may I help you?"
+WAKE_RESPONSE = f"How may I help you {USER_TITLE}?"
 
 # Gemini API Configuration for Real-Time Grounded News Search
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")

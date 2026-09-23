@@ -178,7 +178,7 @@ class WakeUpBot:
         """Executes the alarm and conversational assistant workflow."""
         set_terminal_title("⏰ 6:00 AM WAKE UP BOT - ALARM ACTIVE")
         print("\n==========================================")
-        print(f"⏰ [WAKE UP BOT ACTIVATED] Time: {self.get_current_time().strftime('%Y-%m-%d %I:%M:%S %p %Z')}")
+        print(f"⏰ [WAKE UP BOT ACTIVATED] Time: {self.get_current_time().strftime('%d/%m/%Y %I:%M:%S %p %Z')}")
         print(f"🖥️  Platform: {self.platform_name}")
         print("==========================================")
 
@@ -268,7 +268,7 @@ class WakeUpBot:
                 minutes = int((seconds_remaining % 3600) // 60)
                 seconds = int(seconds_remaining % 60)
 
-                print(f"[Schedule] Next alarm in {hours}h {minutes}m {seconds}s (at {next_target.strftime('%Y-%m-%d %I:%M:%S %p')})")
+                print(f"[Schedule] Next alarm in {hours}h {minutes}m {seconds}s (at {next_target.strftime('%d/%m/%Y %I:%M:%S %p')})")
 
                 if seconds_remaining > 5:
                     time.sleep(min(seconds_remaining - 1, 60))
