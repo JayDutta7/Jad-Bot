@@ -1,0 +1,23 @@
+# Environment & secrets
+.env
+*.env.local
+
+# Test files and folders
+tests/
+test_*.py
+*_test.py
+test_desktop.py
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# OS files
+.DS_Store
+Thumbs.db

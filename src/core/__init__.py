@@ -1,0 +1,32 @@
+"""Core components of the Wake Up Bot."""
+from .config import (
+    ALARM_FILE,
+    ALARM_HOUR,
+    ALARM_MINUTE,
+    BASE_DIR,
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    GREETING_RESPONSE,
+    GREETING_TRIGGER,
+    MAX_ALARM_RING_SECONDS,
+    MAX_NEWS_ITEMS,
+    NEWS_FEEDS,
+    TIMEZONE,
+    USER_TITLE,
+)
+
+__all__ = [
+    "BASE_DIR",
+    "TIMEZONE",
+    "ALARM_HOUR",
+    "ALARM_MINUTE",
+    "USER_TITLE",
+    "GREETING_TRIGGER",
+    "GREETING_RESPONSE",
+    "GEMINI_API_KEY",
+    "GEMINI_MODEL",
+    "MAX_NEWS_ITEMS",
+    "NEWS_FEEDS",
+    "ALARM_FILE",
+    "MAX_ALARM_RING_SECONDS",
+]

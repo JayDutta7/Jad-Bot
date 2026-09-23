@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J.A.D. 🌅 AI Morning Assistant & Wake-Up Agent</title>
+  <meta name="description" content="Futuristic AI-powered Morning Assistant and Wake-Up Bot with animated 3D agent, voice engine, and live news briefing.">
+
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;600;700;800&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="index.css">
+</head>
+<body class="theme-cosmic">
+  <!-- Dynamic Canvas Particle Aura -->
+  <canvas id="ambientCanvas"></canvas>
+
+  <div class="app-layout">
+    <!-- Top Cybernetic Header -->
+    <header class="app-header">
+      <div class="brand-group">
+        <div class="logo-orb">
+          <div class="logo-inner"></div>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">J.A.D. <span>AI AGENT</span></div>
+          <div class="brand-subtitle">Autonomous 6:00 AM Morning Assistant</div>
+        </div>
+      </div>
+
+      <!-- Real-Time IST Clock & Status Pill -->
+      <div class="header-center">
+        <div class="clock-card" id="clockCard">
+          <div class="clock-label">
+            <span class="live-dot"></span> ASIA/KOLKATA (GMT+5:30)
+          </div>
+          <div class="clock-time" id="liveClock">--:--:-- --</div>
+        </div>
+      </div>
+
+      <!-- System Badges & Power Management -->
+      <div class="header-controls">
+        <div class="platform-badge" id="platformBadge">
+          <span class="platform-icon">🖥️</span>
+          <span id="platformText">Detecting Platform...</span>
+        </div>
+        <button class="glass-pill-btn wake-lock-btn" id="wakeLockBtn" title="Toggle Overnight Sleep Prevention">
+          <span class="pill-dot" id="wakeLockDot"></span>
+          <span id="wakeLockText">Sleep Lock: Active</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Agent Stage -->
+    <main class="main-content">
+      <!-- Central Hero: 3D Holographic AI Agent -->
+      <section class="agent-hero-section">
+        <!-- 3D AI Hologram Container -->
+        <div class="hologram-stage" id="hologramStage">
+          <!-- Background Audio Waveform Canvas -->
+          <canvas id="visualizerCanvas" width="400" height="400"></canvas>
+
+          <!-- 3D Gyroscopic Orbital Core -->
+          <div class="orb-container" id="orbCore">
+            <!-- Shockwave Rings for Alarm Mode -->
+            <div class="shockwave shockwave-1"></div>
+            <div class="shockwave shockwave-2"></div>
+            <div class="shockwave shockwave-3"></div>
+
+            <!-- Outer Gyroscopic Gimbal Rings -->
+            <div class="orbital-ring ring-x"></div>
+            <div class="orbital-ring ring-y"></div>
+            <div class="orbital-ring ring-z"></div>
+            <div class="orbital-ring ring-diagonal"></div>
+
+            <!-- Glowing Cybernetic Iris -->
+            <div class="agent-iris">
+              <div class="iris-core">
+                <div class="iris-pupil"></div>
+              </div>
+            </div>
+
+            <!-- Neural Energy Aura -->
+            <div class="plasma-aura"></div>
+          </div>
+
+          <!-- Equalizer Frequency Visualizer Bars -->
+          <div class="equalizer-strip" id="equalizerStrip">
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+          </div>
+        </div>
+
+        <!-- Dynamic Agent State Badge -->
+        <div class="state-badge-container">
+          <div class="agent-state-badge state-idle" id="agentStateBadge">
+            <span class="state-pulse-icon"></span>
+            <span class="state-label" id="agentStateLabel">STANDBY • MONITORING DAILY 6:00 AM IST</span>
+          </div>
+        </div>
+
+        <!-- Alarm Countdown Display -->
+        <div class="countdown-card" id="countdownCard">
+          <div class="countdown-header">NEXT 6:00 AM WAKE-UP IN</div>
+          <div class="countdown-timer">
+            <div class="time-block">
+              <span class="time-num" id="cdHours">--</span>
+              <span class="time-label">HOURS</span>
+            </div>
+            <span class="time-sep">:</span>
+            <div class="time-block">
+              <span class="time-num" id="cdMinutes">--</span>
+              <span class="time-label">MINUTES</span>
+            </div>
+            <span class="time-sep">:</span>
+            <div class="time-block">
+              <span class="time-num" id="cdSeconds">--</span>
+              <span class="time-label">SECONDS</span>
+            </div>
+          </div>
+          <div class="countdown-target" id="targetAlarmTime">Target: Scheduled for 06:00:00 AM IST</div>
+        </div>
+
+        <!-- Quick Action Dock -->
+        <div class="action-dock">
+          <button class="action-btn btn-primary" id="btnSimulateRoutine" title="Simulate the complete 6:00 AM wake up routine right now">
+            <span class="btn-icon">⚡</span>
+            <span class="btn-label">Simulate 6:00 AM Wake</span>
+          </button>
+          <button class="action-btn btn-secondary" id="btnTestAlarm" title="Test alarm audio for 5 seconds">
+            <span class="btn-icon">🔔</span>
+            <span class="btn-label">Test Alarm (5s)</span>
+          </button>
+          <button class="action-btn btn-danger hidden" id="btnStopAlarm" title="Instantly silence active alarm">
+            <span class="btn-icon">🛑</span>
+            <span class="btn-label">Dismiss Alarm</span>
+          </button>
+          <button class="action-btn btn-secondary" id="btnFetchNews" title="Fetch live morning news briefing">
+            <span class="btn-icon">📰</span>
+            <span class="btn-label">Morning News</span>
+          </button>
+          <button class="action-btn btn-secondary" id="btnVoiceMic" title="Speak to the AI Bot using your microphone">
+            <span class="btn-icon" id="micIcon">🎙️</span>
+            <span class="btn-label" id="micLabel">Talk to Bot</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Bottom Dynamic Grid: Conversational Terminal & News Briefing -->
+      <section class="bottom-grid">
+        <!-- Conversational Transcript / Chat -->
+        <div class="glass-card chat-panel">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-icon">💬</span>
+              <span>AI Conversational Transcript</span>
+            </div>
+            <div class="agent-live-tag">
+              <span class="status-indicator"></span> Live Voice Sync
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chatMessages">
+            <!-- Dynamic Chat Bubbles -->
+            <div class="chat-bubble bot-bubble">
+              <div class="bubble-avatar">🤖</div>
+              <div class="bubble-content">
+                <div class="bubble-author">J.A.D. Morning Assistant</div>
+                <div class="bubble-text" id="initialBotGreeting">
+                  Good morning Boss. Systems operational. I will sound your alarm at 6:00 AM IST, listen for your greeting, and deliver your morning briefing.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Input Bar -->
+          <form class="chat-input-bar" id="chatForm">
+            <input
+              type="text"
+              id="chatInput"
+              class="chat-text-input"
+              placeholder="Ask anything or type 'Good morning', 'Latest news', 'That is all'..."
+              autocomplete="off"
+            />
+            <button type="button" class="mic-toggle-btn" id="chatMicBtn" title="Speak via Microphone">
+              🎙️
+            </button>
+            <button type="submit" class="send-btn" id="sendBtn">
+              <span>Send</span>
+              <span class="send-arrow">➔</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Morning News Feed Cards -->
+        <div class="glass-card news-panel">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-icon">🌐</span>
+              <span>Morning Intelligence Briefing</span>
+            </div>
+            <button class="refresh-news-btn" id="btnRefreshNews" title="Refresh Live Headlines">
+              🔄 Refresh
+            </button>
+          </div>
+
+          <div class="news-list" id="newsList">
+            <!-- Loading skeleton placeholder -->
+            <div class="news-loading">
+              <div class="loading-spinner"></div>
+              <span>Fetching live Google / BBC news feeds...</span>
+            </div>
+          </div>
+
+          <div class="news-footer">
+            <span class="powered-by">Powered by <strong>Google Gemini API</strong> with Search Grounding & RSS Fallback</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Status Bar -->
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span>⏰ Wake-Up Bot v2.0</span> • <span>GMT+5:30 (India Standard Time)</span>
+      </div>
+      <div class="footer-center" id="footerSpokenStatus">
+        AI Standby • Ready to awaken Boss at 6:00 AM
+      </div>
+      <div class="footer-right">
+        <span>Press <kbd>Space</kbd> or <kbd>Enter</kbd> to silence alarm</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Audio Context & Tone Generator for Browser-side Alarm Preview -->
+  <audio id="browserAlarmAudio" src="/alarm_sound.wav" preload="auto" loop></audio>
+
+  <script src="app.js"></script>
+</body>
+</html>

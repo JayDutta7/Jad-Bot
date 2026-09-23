@@ -1,0 +1,10 @@
+# Optional dependencies for enhanced desktop microphone input and voice synthesis.
+# NOTE: The core bot works 100% out-of-the-box using the Python standard library
+# and built-in OS tools (macOS: 'say' & 'afplay'; Windows: 'winsound' & SAPI/PowerShell)!
+
+# 1. Cross-platform offline Text-to-Speech (optional, for custom voice speed/tuning):
+pyttsx3>=2.90
+
+# 2. Microphone Speech-to-Text (optional, if you prefer speaking to your PC instead of typing):
+SpeechRecognition>=3.10.0
+PyAudio>=0.2.13
