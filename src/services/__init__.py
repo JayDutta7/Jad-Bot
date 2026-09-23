@@ -7,7 +7,12 @@ from .news import (
     get_conversational_chat_reply,
     get_morning_news_speech,
 )
-from .weather import get_current_weather
+from .weather import (
+    get_active_location,
+    get_current_weather,
+    search_place_coordinates,
+    set_active_location,
+)
 
 __all__ = [
     "clean_tts_text",
@@ -17,4 +22,7 @@ __all__ = [
     "get_conversational_chat_reply",
     "get_morning_news_speech",
     "get_current_weather",
+    "search_place_coordinates",
+    "set_active_location",
+    "get_active_location",
 ]

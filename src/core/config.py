@@ -32,9 +32,12 @@ _load_env_file()
 # Timezone: GMT +5:30 (India Standard Time)
 TIMEZONE = "Asia/Kolkata"
 
-# Alarm Target Time (24-hour format)
+# Alarm Target Times (24-hour format)
+# Default Mon-Sat: 6:30 AM IST; Sunday: 7:00 AM IST
 ALARM_HOUR = 6
-ALARM_MINUTE = 0
+ALARM_MINUTE = 30
+SUNDAY_ALARM_HOUR = 7
+SUNDAY_ALARM_MINUTE = 0
 
 # Persona & Response Configuration
 USER_TITLE = "Boss"

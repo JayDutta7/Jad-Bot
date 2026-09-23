@@ -53,6 +53,14 @@ const DOM = {
   weatherIcon: document.getElementById('weatherIcon'),
   weatherTemp: document.getElementById('weatherTemp'),
   btnWeather: document.getElementById('btnWeather'),
+  locationBadge: document.getElementById('locationBadge'),
+  locationText: document.getElementById('locationText'),
+  locationBanner: document.getElementById('locationBanner'),
+  locationForm: document.getElementById('locationForm'),
+  locationInput: document.getElementById('locationInput'),
+  btnCloseBanner: document.getElementById('btnCloseBanner'),
+  countdownHeader: document.getElementById('countdownHeader'),
+  btnChangeAlarm: document.getElementById('btnChangeAlarm'),
 };
 
 // ==============================================================================
@@ -286,16 +294,33 @@ function updateLiveClockAndCountdown() {
   const formatter = new Intl.DateTimeFormat('en-US', options);
   DOM.liveClock.textContent = formatter.format(now);
 
-  // Calculate countdown to next 6:00 AM IST
-  // Convert current UTC time to IST timestamp
+  // If backend target alarm is known, compute precise diff
+  if (STATE.targetAlarmIso) {
+    const targetDate = new Date(STATE.targetAlarmIso);
+    const diffSec = Math.max(0, Math.floor((targetDate.getTime() - now.getTime()) / 1000));
+    const h = Math.floor(diffSec / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    const s = diffSec % 60;
+    DOM.cdHours.textContent = String(h).padStart(2, '0');
+    DOM.cdMinutes.textContent = String(m).padStart(2, '0');
+    DOM.cdSeconds.textContent = String(s).padStart(2, '0');
+    return;
+  }
+
+  // Fallback: Compute adaptive 6:30 AM (Mon-Sat) / 7:00 AM (Sun)
   const nowUtc = now.getTime() + now.getTimezoneOffset() * 60000;
   const istNow = new Date(nowUtc + 5.5 * 3600000);
 
   let targetIst = new Date(istNow);
-  targetIst.setHours(6, 0, 0, 0);
+  const targetHour = targetIst.getDay() === 0 ? 7 : 6;
+  const targetMinute = targetIst.getDay() === 0 ? 0 : 30;
+  targetIst.setHours(targetHour, targetMinute, 0, 0);
 
   if (targetIst <= istNow) {
     targetIst.setDate(targetIst.getDate() + 1);
+    const nextDayHour = targetIst.getDay() === 0 ? 7 : 6;
+    const nextDayMin = targetIst.getDay() === 0 ? 0 : 30;
+    targetIst.setHours(nextDayHour, nextDayMin, 0, 0);
   }
 
   const diffSec = Math.max(0, Math.floor((targetIst - istNow) / 1000));
@@ -308,7 +333,8 @@ function updateLiveClockAndCountdown() {
   DOM.cdSeconds.textContent = String(s).padStart(2, '0');
 
   const dayName = targetIst.getDate() === istNow.getDate() ? 'Today' : 'Tomorrow';
-  DOM.targetAlarmTime.textContent = `Target: ${dayName} at 06:00:00 AM IST`;
+  const timeLabel = targetIst.getDay() === 0 ? '07:00:00 AM' : '06:30:00 AM';
+  DOM.targetAlarmTime.textContent = `Target: ${dayName} at ${timeLabel} IST (Sun: 7:00 AM)`;
 }
 
 setInterval(updateLiveClockAndCountdown, 1000);
@@ -325,6 +351,23 @@ async function fetchStatus() {
 
     if (data.platform) DOM.platformText.textContent = data.platform;
     if (data.user_title) STATE.userTitle = data.user_title;
+    if (data.next_alarm_iso) STATE.targetAlarmIso = data.next_alarm_iso;
+
+    // Display target time & schedule description
+    if (data.next_alarm_str && DOM.targetAlarmTime) {
+      const scheduleTag = data.schedule_type || (data.is_custom_alarm ? 'Custom Alarm' : 'Default Schedule');
+      DOM.targetAlarmTime.textContent = `Target: ${data.next_alarm_str} (${scheduleTag})`;
+    }
+
+    // Location badge sync
+    if (data.location && DOM.locationText) {
+      const loc = data.location;
+      const place = loc.place || 'Local Area';
+      const lat = loc.latitude != null ? Number(loc.latitude).toFixed(2) : null;
+      const lon = loc.longitude != null ? Number(loc.longitude).toFixed(2) : null;
+      const coordsText = (lat && lon) ? ` (${lat}, ${lon})` : '';
+      DOM.locationText.textContent = `${place}${coordsText}`;
+    }
 
     // Sleep Lock sync
     STATE.sleepLockActive = !!data.sleep_prevention_active;
@@ -431,6 +474,54 @@ if (DOM.btnWeather) {
     } catch (e) {
       setAgentState('idle');
       appendChatMessage('bot', "Could not retrieve live weather at the moment, Boss.");
+    }
+  });
+}
+
+if (DOM.btnChangeAlarm) {
+  DOM.btnChangeAlarm.addEventListener('click', async () => {
+    const userInput = prompt(
+      `Set Wake-Up Alarm Time for ${STATE.userTitle}:\n\nEnter time (e.g. '7:30 AM', '8:00 AM', '6:15 AM') or type 'reset' for default schedule (6:30 AM weekdays / 7:00 AM Sundays):`,
+      "7:00 AM"
+    );
+    if (!userInput) return;
+
+    if (userInput.trim().toLowerCase() === 'reset') {
+      try {
+        const res = await fetch('/api/set-alarm-time', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reset: true }),
+        });
+        const data = await res.json();
+        appendChatMessage('user', 'Reset alarm schedule to default');
+        appendChatMessage('bot', data.message);
+        fetchStatus();
+      } catch (e) {}
+      return;
+    }
+
+    const match = userInput.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
+    if (match) {
+      let h = parseInt(match[1]);
+      const m = match[2] ? parseInt(match[2]) : 0;
+      const ampm = match[3] ? match[3].toLowerCase() : null;
+      if (ampm === 'pm' && h < 12) h += 12;
+      if (ampm === 'am' && h === 12) h = 0;
+
+      try {
+        const res = await fetch('/api/set-alarm-time', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hour: h, minute: m }),
+        });
+        const data = await res.json();
+        appendChatMessage('user', `Set alarm to ${userInput}`);
+        appendChatMessage('bot', data.message);
+        fetchStatus();
+      } catch (e) {}
+    } else {
+      alert("Invalid time format. Please enter e.g. '7:30 AM' or '08:00'.");
     }
   });
 }
@@ -735,4 +826,132 @@ async function initWelcomeGreeting() {
 loadWeather();
 setInterval(loadWeather, 10 * 60 * 1000);
 initWelcomeGreeting();
+
+// ==============================================================================
+// 11. GPS GEOLOCATION & PLACE GEOCODING (FALLBACK)
+// ==============================================================================
+function initGeolocation() {
+  if (!navigator.geolocation) {
+    onGeolocationDenied('Geolocation is not supported by your browser.');
+    return;
+  }
+
+  if (DOM.locationText) DOM.locationText.textContent = 'Acquiring GPS...';
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      if (DOM.locationText) DOM.locationText.textContent = `GPS: ${lat.toFixed(2)}, ${lon.toFixed(2)}`;
+      if (DOM.locationBanner) DOM.locationBanner.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude: lat, longitude: lon }),
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          const loc = data.location;
+          if (DOM.locationText) {
+            DOM.locationText.textContent = `${loc.place} (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+          }
+          loadWeather();
+        }
+      } catch (e) {}
+    },
+    (error) => {
+      console.warn('Geolocation not permitted or unavailable:', error.message);
+      onGeolocationDenied();
+    },
+    { timeout: 8000, enableHighAccuracy: true }
+  );
+}
+
+function onGeolocationDenied() {
+  if (DOM.locationBanner) {
+    DOM.locationBanner.classList.remove('hidden');
+  }
+  if (DOM.locationText) DOM.locationText.textContent = 'Set Location 📍';
+
+  if (!window.__jadLocationPrompted) {
+    window.__jadLocationPrompted = true;
+    const promptMsg = "📍 Location permission was not granted. Where are you currently located at?";
+    appendChatMessage('bot', promptMsg);
+    fetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: "Where are you currently located at?" }),
+    }).catch(() => {});
+  }
+}
+
+async function submitPlaceLocation(placeName) {
+  if (!placeName) return;
+  setAgentState('thinking');
+  appendChatMessage('user', `My location is ${placeName}`);
+  appendChatMessage('bot', `Searching coordinates and meteorological forecast for ${placeName}...`);
+
+  try {
+    const res = await fetch('/api/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ place: placeName }),
+    });
+    const data = await res.json();
+
+    if (data.status === 'ok') {
+      const loc = data.location;
+      if (DOM.locationText) {
+        DOM.locationText.textContent = `${loc.place} (${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)})`;
+      }
+      if (DOM.locationBanner) DOM.locationBanner.classList.add('hidden');
+      setAgentState('speaking');
+      const w = data.weather || {};
+      const speech = `Location synchronized to ${loc.display_name}. Current weather is ${w.temp_c || '--'} degrees Celsius with ${(w.condition || 'clear skies').toLowerCase()}.`;
+      appendChatMessage('bot', speech);
+      fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: speech }),
+      }).catch(() => {});
+      loadWeather();
+      setTimeout(() => setAgentState('idle'), 6000);
+    } else {
+      setAgentState('idle');
+      appendChatMessage('bot', data.error || `Could not find coordinates for ${placeName}. Please try another city name.`);
+    }
+  } catch (e) {
+    setAgentState('idle');
+    appendChatMessage('bot', 'Network error while geocoding place. Please check internet connection.');
+  }
+}
+
+if (DOM.locationForm) {
+  DOM.locationForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const val = DOM.locationInput ? DOM.locationInput.value.trim() : '';
+    if (val) {
+      if (DOM.locationInput) DOM.locationInput.value = '';
+      submitPlaceLocation(val);
+    }
+  });
+}
+
+if (DOM.btnCloseBanner) {
+  DOM.btnCloseBanner.addEventListener('click', () => {
+    if (DOM.locationBanner) DOM.locationBanner.classList.add('hidden');
+  });
+}
+
+if (DOM.locationBadge) {
+  DOM.locationBadge.addEventListener('click', () => {
+    const place = prompt(`Enter your city or place name for ${STATE.userTitle}:`, 'Kolkata');
+    if (place) submitPlaceLocation(place);
+  });
+}
+
+// Start GPS geolocation detection
+initGeolocation();
 

@@ -251,6 +251,136 @@ html, body {
   color: #cbd5e1;
 }
 
+.location-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.45rem 0.9rem;
+  background: rgba(121, 40, 202, 0.15);
+  border: 1px solid rgba(121, 40, 202, 0.4);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.location-badge:hover {
+  background: rgba(121, 40, 202, 0.28);
+  border-color: var(--neon-violet);
+  box-shadow: 0 0 15px rgba(121, 40, 202, 0.4);
+  transform: translateY(-1px);
+}
+
+.location-icon {
+  font-size: 0.95rem;
+  animation: bouncePin 2s infinite ease-in-out;
+}
+
+@keyframes bouncePin {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* Location Denied Banner */
+.location-banner {
+  max-width: 1400px;
+  margin: 0.75rem auto 0;
+  padding: 0 1.5rem;
+  animation: slideDownBanner 0.4s ease-out;
+}
+
+@keyframes slideDownBanner {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.location-banner-inner {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.96));
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 242, 254, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: 1rem 1.4rem;
+}
+
+.banner-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.35rem;
+}
+
+.banner-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.banner-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  transition: color 0.2s;
+}
+
+.banner-close:hover {
+  color: #fff;
+}
+
+.banner-desc {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+}
+
+.banner-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.banner-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0.5rem 1rem;
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.banner-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+}
+
+.banner-submit {
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+  border: none;
+  color: #030712;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.banner-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+}
+
 .glass-pill-btn {
   display: flex;
   align-items: center;

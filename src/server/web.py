@@ -11,12 +11,22 @@ try:
     from src.core.config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
     from src.platform_util.desktop import get_platform_name
     from src.services.news import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
-    from src.services.weather import get_current_weather
+    from src.services.weather import (
+        get_active_location,
+        get_current_weather,
+        search_place_coordinates,
+        set_active_location,
+    )
 except ImportError:
     from config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
     from desktop_helper import get_platform_name
     from news_service import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
-    from services.weather import get_current_weather
+    from services.weather import (
+        get_active_location,
+        get_current_weather,
+        search_place_coordinates,
+        set_active_location,
+    )
 
 UI_DIR = os.path.join(BASE_DIR, "ui")
 MAX_REQUEST_BODY_SIZE = 65536  # 64 KB max payload to prevent Denial of Service
@@ -154,16 +164,24 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             self._handle_speak(body)
         elif path == "/api/toggle-sleep":
             self._handle_toggle_sleep()
+        elif path == "/api/location":
+            self._handle_location(body)
+        elif path == "/api/set-alarm-time":
+            self._handle_set_alarm_time(body)
         else:
             self._send_json_response({"error": "Endpoint not found"}, status=404)
 
     def _handle_status(self):
         bot = BotAPIServer.bot_instance
+        active_loc = get_active_location()
         if bot:
             now = bot.get_current_time()
             secs, target = bot.get_seconds_until_next_alarm()
             is_ringing = bot.alarm.is_ringing
             sleep_active = bot.sleep_preventer._is_active
+            h_sched, m_sched, sched_type = bot.get_alarm_time_for_date(target.date())
+            is_custom = bot.custom_alarm_hour is not None
+            custom_time = f"{bot.custom_alarm_hour:02d}:{bot.custom_alarm_minute:02d}" if is_custom else None
         else:
             from datetime import datetime
             from zoneinfo import ZoneInfo
@@ -172,6 +190,9 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             target = now
             is_ringing = False
             sleep_active = False
+            sched_type = "Default Schedule"
+            is_custom = False
+            custom_time = None
 
         if is_ringing:
             BotAPIServer.agent_state = "ringing"
@@ -193,7 +214,11 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             "sleep_prevention_active": sleep_active,
             "agent_state": BotAPIServer.agent_state,
             "last_spoken": BotAPIServer.last_spoken_message,
-            "transcript": BotAPIServer.transcript[-20:]
+            "transcript": BotAPIServer.transcript[-20:],
+            "schedule_type": sched_type,
+            "is_custom_alarm": is_custom,
+            "custom_alarm_time": custom_time,
+            "location": active_loc
         }
         self._send_json_response(data)
 
@@ -250,6 +275,87 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             threading.Thread(target=bot.speak_welcome_greeting, daemon=True).start()
         self._send_json_response({"message": welcome_text})
 
+    def _handle_location(self, body: dict):
+        lat = body.get("latitude")
+        lon = body.get("longitude")
+        place = body.get("place") or body.get("location")
+
+        if lat is not None and lon is not None:
+            try:
+                lat_f = float(lat)
+                lon_f = float(lon)
+                weather_data = get_current_weather(lat=lat_f, lon=lon_f)
+                resolved_place = weather_data.get("location") or "your location"
+                set_active_location(resolved_place, lat=lat_f, lon=lon_f, source="gps")
+                loc = get_active_location()
+                self._send_json_response({
+                    "status": "ok",
+                    "location": loc,
+                    "weather": weather_data,
+                    "message": f"Location updated to {loc['place']} ({lat_f:.4f}, {lon_f:.4f})"
+                })
+                return
+            except Exception as e:
+                self._send_json_response({"error": f"Failed to process coordinates: {e}"}, status=400)
+                return
+
+        if place:
+            result = search_place_coordinates(str(place))
+            if result:
+                weather_data = get_current_weather(lat=result["latitude"], lon=result["longitude"])
+                msg = f"Location set to {result['display_name']}."
+                self._send_json_response({
+                    "status": "ok",
+                    "location": result,
+                    "weather": weather_data,
+                    "message": msg
+                })
+                return
+            else:
+                self._send_json_response({
+                    "status": "not_found",
+                    "error": f"Could not find coordinates for '{place}'. Please try another city or locality name."
+                }, status=404)
+                return
+
+        self._send_json_response({"error": "Provide either {latitude, longitude} or {place}"}, status=400)
+
+    def _handle_set_alarm_time(self, body: dict):
+        bot = BotAPIServer.bot_instance
+        if not bot:
+            self._send_json_response({"error": "Bot instance not initialized"}, status=500)
+            return
+
+        if body.get("reset"):
+            msg = bot.reset_custom_alarm_time()
+        else:
+            try:
+                h = int(body.get("hour"))
+                m = int(body.get("minute", 0))
+                msg = bot.set_custom_alarm_time(h, m)
+            except Exception as e:
+                self._send_json_response({"error": f"Invalid time: {e}"}, status=400)
+                return
+
+        secs, target = bot.get_seconds_until_next_alarm()
+        BotAPIServer.last_spoken_message = msg
+        BotAPIServer.transcript.append({"sender": "bot", "text": msg})
+
+        import threading
+        def _speak():
+            BotAPIServer.agent_state = "speaking"
+            bot.voice.speak(msg)
+            BotAPIServer.agent_state = "idle"
+        threading.Thread(target=_speak, daemon=True).start()
+
+        self._send_json_response({
+            "status": "ok",
+            "message": msg,
+            "next_alarm_str": target.strftime("%Y-%m-%d %I:%M:%S %p"),
+            "next_alarm_iso": target.isoformat(),
+            "seconds_remaining": max(0, int(secs))
+        })
+
     def _handle_chat(self, body: dict):
         bot = BotAPIServer.bot_instance
         user_msg = str(body.get("message", "")).strip()[:1000]
@@ -259,11 +365,19 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
 
         BotAPIServer.transcript.append({"sender": "user", "text": user_msg})
         cleaned = user_msg.lower()
+        alarm_cmd = bot.parse_alarm_time_command(user_msg) if bot else None
 
         if bot and bot.alarm.is_ringing:
             bot.alarm.stop_ringing()
             reply = f"Good morning {USER_TITLE}! Alarm silenced. How can I help you today?"
             BotAPIServer.agent_state = "speaking"
+        elif alarm_cmd:
+            if alarm_cmd[0] == "reset":
+                reply = bot.reset_custom_alarm_time()
+            elif alarm_cmd[0] == "set":
+                reply = bot.set_custom_alarm_time(alarm_cmd[1], alarm_cmd[2])
+            else:
+                reply = f"Understood, {USER_TITLE}."
         elif any(w in cleaned for w in ["good morning", "morning"]):
             reply = f"Good morning {USER_TITLE}! Wishing you an energizing and productive day ahead!"
         elif any(w in cleaned for w in ["news", "headline", "headlines", "latest"]):
@@ -271,8 +385,24 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         elif any(w in cleaned for w in ["weather", "temperature", "forecast", "climate", "rain", "umbrella", "how is the weather", "what is the weather"]):
             weather_data = get_current_weather()
             reply = weather_data.get("spoken_text", f"The weather report is currently being updated for {USER_TITLE}.")
+        elif any(w in cleaned for w in ["where am i", "my location", "where are you located", "current location"]):
+            loc = get_active_location()
+            lat_txt = f" (latitude {loc['latitude']:.4f}, longitude {loc['longitude']:.4f})" if loc.get("latitude") else ""
+            reply = f"Your current active location is set to {loc.get('place', 'Calcutta')}, {loc.get('country', 'India')}{lat_txt}, {USER_TITLE}."
+        elif (
+            any(cleaned.startswith(p) for p in ["i am in ", "in ", "at ", "from ", "currently in ", "my location is "])
+            or (len(cleaned.split()) <= 3 and not any(w in cleaned for w in ["hello", "hi", "hey", "who", "what", "test", "routine", "no", "yes", "stop", "exit", "bye", "alarm"]))
+        ):
+            geo = search_place_coordinates(user_msg)
+            if geo:
+                w = get_current_weather(lat=geo["latitude"], lon=geo["longitude"])
+                reply = f"Location synchronized to {geo['display_name']} (lat: {geo['latitude']:.2f}, lon: {geo['longitude']:.2f}), {USER_TITLE}. Weather is currently {w.get('temp_c')} degrees Celsius with {w.get('condition', 'clear skies').lower()}."
+            else:
+                reply = get_conversational_chat_reply(user_msg)
         elif any(w in cleaned for w in ["that's all", "that is all", "stop", "exit", "bye", "thanks", "thank you"]):
-            reply = f"Have an outstanding day ahead, {USER_TITLE}! I will stand by for tomorrow's 6:00 AM wake up."
+            secs, target = bot.get_seconds_until_next_alarm() if bot else (0, None)
+            time_txt = target.strftime("%I:%M %p") if target else "6:30 AM"
+            reply = f"Have an outstanding day ahead, {USER_TITLE}! I will stand by for your next wake up at {time_txt}."
         else:
             reply = get_conversational_chat_reply(user_msg)
 

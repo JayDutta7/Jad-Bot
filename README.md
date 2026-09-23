@@ -36,8 +36,9 @@
 | :--- | :--- | :--- |
 | **🤖 3D AI Hologram** | Real-time orbital ring animations, audio reactive waves, and dynamic state aura. | Browser / Desktop UI |
 | **👋 Spoken Welcome** | Voice greeting on launch: *"Hello Boss, how may I help you?"* | macOS say / SAPI5 |
+| **⏰ Adaptive Alarm** | Default 6:30 AM weekdays, 7:00 AM Sundays; adjust anytime by voice or chat. | Cross-Platform |
+| **📍 Smart Geolocation** | Automatic GPS lat/long detection with interactive place-name geocoding fallback. | HTML5 / Open-Meteo |
 | **⛅ Real-Time Weather** | Live local weather & forecasts with umbrella / hydration advice. | wttr.in / Open-Meteo |
-| **⏰ Precision Alarm** | High-pitch WAV tone generator built using pure standard library (`wave` + `struct`). | macOS, Windows, Linux, Android |
 | **🗣️ Conversational Voice** | Bi-directional voice engine supporting macOS `say`, Windows SAPI5, and Web Speech STT. | macOS, Windows, Android |
 | **📰 Morning Briefing** | Live breaking news in conversational spoken English with zero markdown artifacts. | Global (Gemini / RSS) |
 | **🛡️ Zero-Dependency Core** | Runs 100% out-of-the-box using the Python 3.9+ standard library. | Cross-Platform |

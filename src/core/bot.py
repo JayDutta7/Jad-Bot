@@ -1,6 +1,7 @@
-"""Main Bot Orchestrator: Manages scheduling, alarms, voice interaction, and morning news."""
+import re
 import time
 from datetime import datetime, timedelta
+from typing import Optional, Tuple
 from zoneinfo import ZoneInfo
 
 from src.audio.alarm import AlarmController
@@ -10,6 +11,8 @@ from src.core.config import (
     ALARM_MINUTE,
     GREETING_RESPONSE,
     GREETING_TRIGGER,
+    SUNDAY_ALARM_HOUR,
+    SUNDAY_ALARM_MINUTE,
     TIMEZONE,
     USER_TITLE,
 )
@@ -32,6 +35,9 @@ class WakeUpBot:
         self.voice = VoiceEngine()
         self.sleep_preventer = DesktopSleepPreventer()
         self.platform_name = get_platform_name()
+        # Custom user-defined alarm override (if None, follows 6:30 AM weekdays / 7:00 AM Sunday)
+        self.custom_alarm_hour: Optional[int] = None
+        self.custom_alarm_minute: Optional[int] = None
 
     def speak_welcome_greeting(self, blocking: bool = True) -> str:
         """Speaks the opening greeting: 'Hello Boss, how may I help you?'"""
@@ -43,20 +49,117 @@ class WakeUpBot:
         """Returns current localized datetime in GMT +5:30."""
         return datetime.now(self.tz)
 
-    def get_seconds_until_next_alarm(self) -> float:
-        """Calculates precise seconds until next 6:00 AM in GMT+5:30."""
+    def get_alarm_time_for_date(self, target_date) -> Tuple[int, int, str]:
+        """
+        Determines the alarm hour, minute, and schedule description for a given date.
+        If a custom alarm time is set by the user, that overrides default schedules.
+        Otherwise:
+          - Sunday (target_date.weekday() == 6): SUNDAY_ALARM_HOUR : SUNDAY_ALARM_MINUTE (7:00 AM)
+          - Mon-Sat: ALARM_HOUR : ALARM_MINUTE (6:30 AM)
+        """
+        if self.custom_alarm_hour is not None and self.custom_alarm_minute is not None:
+            period = "AM" if self.custom_alarm_hour < 12 else "PM"
+            h12 = self.custom_alarm_hour % 12 or 12
+            return (
+                self.custom_alarm_hour,
+                self.custom_alarm_minute,
+                f"Custom Alarm ({h12}:{self.custom_alarm_minute:02d} {period})"
+            )
+
+        if target_date.weekday() == 6:  # Sunday
+            return (SUNDAY_ALARM_HOUR, SUNDAY_ALARM_MINUTE, "Sunday Schedule (7:00 AM)")
+        else:
+            return (ALARM_HOUR, ALARM_MINUTE, "Weekday Schedule (6:30 AM)")
+
+    def get_seconds_until_next_alarm(self) -> Tuple[float, datetime]:
+        """
+        Calculates precise seconds until next alarm in GMT+5:30.
+        Respects default 6:30 AM weekdays, 7:00 AM Sundays, and custom user overrides.
+        """
         now = self.get_current_time()
+
+        # 1. Test today's alarm time
+        h_today, m_today, _ = self.get_alarm_time_for_date(now.date())
         target = now.replace(
-            hour=ALARM_HOUR,
-            minute=ALARM_MINUTE,
+            hour=h_today,
+            minute=m_today,
             second=0,
             microsecond=0
         )
-        if target <= now:
-            target += timedelta(days=1)
 
-        delta = (target - now).total_seconds()
-        return delta, target
+        if target > now:
+            delta = (target - now).total_seconds()
+            return delta, target
+
+        # 2. Today's alarm has passed, calculate for tomorrow
+        tomorrow = (now + timedelta(days=1)).date()
+        h_tom, m_tom, _ = self.get_alarm_time_for_date(tomorrow)
+        target_tom = now.replace(
+            year=tomorrow.year,
+            month=tomorrow.month,
+            day=tomorrow.day,
+            hour=h_tom,
+            minute=m_tom,
+            second=0,
+            microsecond=0
+        )
+        delta = (target_tom - now).total_seconds()
+        return delta, target_tom
+
+    def set_custom_alarm_time(self, hour: int, minute: int) -> str:
+        """Sets a user-defined custom alarm time and returns confirmation text."""
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            raise ValueError(f"Invalid time: {hour:02d}:{minute:02d}")
+        self.custom_alarm_hour = hour
+        self.custom_alarm_minute = minute
+        period = "AM" if hour < 12 else "PM"
+        h12 = hour % 12 or 12
+        time_str = f"{h12}:{minute:02d} {period}"
+        return f"Alarm time has been updated to {time_str}, {USER_TITLE}."
+
+    def reset_custom_alarm_time(self) -> str:
+        """Resets alarm schedule back to default (6:30 AM Mon-Sat, 7:00 AM Sun)."""
+        self.custom_alarm_hour = None
+        self.custom_alarm_minute = None
+        return f"Alarm schedule has been reset to default: 6:30 AM weekdays and 7:00 AM on Sundays, {USER_TITLE}."
+
+    def parse_alarm_time_command(self, text: str) -> Optional[Tuple[str, Optional[int], Optional[int]]]:
+        """
+        Parses conversational user commands to change or reset alarm time.
+        Returns ('reset', None, None) or ('set', hour_24, minute) or None.
+        """
+        t = text.lower().strip()
+        if "reset" in t and ("alarm" in t or "schedule" in t or "default" in t or "time" in t):
+            return ("reset", None, None)
+        if "default alarm" in t or "default schedule" in t:
+            return ("reset", None, None)
+
+        # Match phrases like:
+        # "set alarm to 7:30 am", "change alarm to 8 am", "wake me up at 6.30 am", "set alarm 7 am"
+        match = re.search(
+            r'(?:alarm|wake me up|wake up|time)(?:.*?(?:to|at|for|\bis\b))?\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?',
+            t
+        )
+        if not match:
+            match = re.search(r'\b(?:at\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b', t)
+
+        if match:
+            h = int(match.group(1))
+            m = int(match.group(2)) if match.group(2) else 0
+            ampm = match.group(3).lower() if match.group(3) else None
+
+            if ampm == "pm" and h < 12:
+                h += 12
+            elif ampm == "am" and h == 12:
+                h = 0
+            elif ampm is None and 1 <= h <= 5:
+                # e.g., "set alarm to 5" in morning wake up context usually means 5 AM
+                pass
+
+            if 0 <= h <= 23 and 0 <= m <= 59:
+                return ("set", h, m)
+
+        return None
 
     def trigger_morning_routine(self):
         """Executes the alarm and conversational assistant workflow."""

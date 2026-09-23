@@ -19,6 +19,15 @@ try:
 except ImportError:
     USER_TITLE = "Boss"
 
+# Persistent active location state
+ACTIVE_LOCATION = {
+    "place": "Calcutta",
+    "country": "India",
+    "latitude": 22.5626,
+    "longitude": 88.3630,
+    "source": "auto"
+}
+
 # In-memory cache to prevent redundant network requests (valid for 10 minutes)
 _WEATHER_CACHE = {
     "timestamp": 0,
@@ -32,9 +41,103 @@ def _clean_text(text: str) -> str:
     return re.sub(r'\s+', ' ', str(text)).strip()
 
 
-def fetch_weather_wttr(city: Optional[str] = None) -> Optional[Dict]:
-    """Fetches weather data from wttr.in JSON endpoint."""
-    target = urllib.parse.quote(city) if city else ""
+def set_active_location(
+    place: str,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    country: str = "",
+    source: str = "manual"
+) -> Dict:
+    """Updates active location and coordinates, invalidating the weather cache."""
+    global ACTIVE_LOCATION, _WEATHER_CACHE
+    ACTIVE_LOCATION["place"] = _clean_text(place)
+    if lat is not None:
+        ACTIVE_LOCATION["latitude"] = float(lat)
+    if lon is not None:
+        ACTIVE_LOCATION["longitude"] = float(lon)
+    if country:
+        ACTIVE_LOCATION["country"] = _clean_text(country)
+    ACTIVE_LOCATION["source"] = source
+    _WEATHER_CACHE["timestamp"] = 0
+    return dict(ACTIVE_LOCATION)
+
+
+def get_active_location() -> Dict:
+    """Returns a copy of the current active location and coordinates."""
+    return dict(ACTIVE_LOCATION)
+
+
+def search_place_coordinates(place_name: str) -> Optional[Dict]:
+    """
+    Searches for a place name and returns its latitude, longitude, and country.
+    Uses free Open-Meteo Geocoding API with zero API key required.
+    """
+    clean = place_name.strip()
+    if not clean:
+        return None
+
+    # Strip conversational prefixes: e.g. "I am in Kolkata", "currently at Mumbai"
+    clean = re.sub(r'^(?:i(?:\s+am)?\s+(?:in|at|from)|currently\s+(?:in|at)|my\s+location\s+is\s+|(?:in|at|from))\s+', '', clean, flags=re.IGNORECASE).strip()
+    # Strip trailing punctuation
+    clean = clean.strip(".!?,")
+    if not clean:
+        return None
+
+    target = urllib.parse.quote(clean)
+    url = f"https://geocoding-api.open-meteo.com/v1/search?name={target}&count=1&language=en&format=json"
+
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "JAD-Bot-Geocoding-Client/1.0"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=6) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            results = data.get("results")
+            if results and len(results) > 0:
+                top = results[0]
+                resolved_place = top.get("name", clean)
+                lat = float(top.get("latitude"))
+                lon = float(top.get("longitude"))
+                country = top.get("country", "")
+                admin1 = top.get("admin1", "")
+
+                info = {
+                    "place": resolved_place,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "country": country,
+                    "admin1": admin1,
+                    "display_name": f"{resolved_place}, {admin1}, {country}".replace(", ,", ",").strip(", "),
+                    "source": "geocoded"
+                }
+                set_active_location(
+                    place=resolved_place,
+                    lat=lat,
+                    lon=lon,
+                    country=country,
+                    source="geocoded"
+                )
+                return info
+    except Exception as e:
+        print(f"[Geocoding Error]: {e}")
+
+    return None
+
+
+def fetch_weather_wttr(
+    city: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None
+) -> Optional[Dict]:
+    """Fetches weather data from wttr.in JSON endpoint using city or (lat, lon)."""
+    if lat is not None and lon is not None:
+        target = f"{lat:.4f},{lon:.4f}"
+    elif city:
+        target = urllib.parse.quote(city)
+    else:
+        target = ""
+
     url = f"https://wttr.in/{target}?format=j1"
 
     req = urllib.request.Request(
@@ -151,31 +254,52 @@ def format_weather_speech(w: Dict) -> str:
     return speech.strip()
 
 
-def get_current_weather(city: Optional[str] = None) -> Dict:
+def get_current_weather(
+    city: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None
+) -> Dict:
     """
     Main function to get today's weather:
     Checks cache first, then tries wttr.in, then Open-Meteo fallback.
-    Returns dictionary with metrics and ready-to-speak text.
+    Returns dictionary with metrics, coordinates, and ready-to-speak text.
     """
-    global _WEATHER_CACHE
+    global _WEATHER_CACHE, ACTIVE_LOCATION
     now = time.time()
-    cache_key = (city or "").strip().lower()
+
+    if lat is not None and lon is not None:
+        if city:
+            set_active_location(city, lat=lat, lon=lon, source="coords")
+        else:
+            ACTIVE_LOCATION["latitude"] = float(lat)
+            ACTIVE_LOCATION["longitude"] = float(lon)
+            ACTIVE_LOCATION["source"] = "coords"
+
+    use_lat = lat if lat is not None else ACTIVE_LOCATION.get("latitude")
+    use_lon = lon if lon is not None else ACTIVE_LOCATION.get("longitude")
+    target_city = city or ACTIVE_LOCATION.get("place")
+
+    cache_key = f"{target_city}_{use_lat}_{use_lon}".strip().lower()
 
     if _WEATHER_CACHE["data"] and _WEATHER_CACHE["location"] == cache_key:
         if now - _WEATHER_CACHE["timestamp"] < 600:  # 10 minute cache
             return _WEATHER_CACHE["data"]
 
-    # 1. Try wttr.in (auto IP geolocation or named city)
-    data = fetch_weather_wttr(city)
+    # 1. Try wttr.in (by lat/lon or city or auto)
+    data = fetch_weather_wttr(city=target_city if not (use_lat and use_lon) else None, lat=use_lat, lon=use_lon)
 
     # 2. Try Open-Meteo fallback
     if not data:
-        data = fetch_weather_openmeteo(city_name=city or "Kolkata")
+        data = fetch_weather_openmeteo(
+            lat=use_lat if use_lat is not None else 22.57,
+            lon=use_lon if use_lon is not None else 88.36,
+            city_name=target_city or "Kolkata"
+        )
 
     # 3. Offline default fallback if internet is completely down
     if not data:
         data = {
-            "location": city or "Kolkata",
+            "location": target_city or "Kolkata",
             "country": "India",
             "temp_c": "26",
             "feels_like_c": "27",
@@ -185,6 +309,12 @@ def get_current_weather(city: Optional[str] = None) -> Dict:
             "source": "Offline Fallback"
         }
 
+    # Ensure location name reflects user's geocoded/active place if available
+    if ACTIVE_LOCATION.get("place") and (data.get("location") == "your area" or not data.get("location")):
+        data["location"] = ACTIVE_LOCATION["place"]
+
+    data["latitude"] = use_lat
+    data["longitude"] = use_lon
     data["spoken_text"] = format_weather_speech(data)
 
     # Update cache

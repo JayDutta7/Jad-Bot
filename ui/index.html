@@ -46,6 +46,10 @@
 
       <!-- System Badges & Power Management -->
       <div class="header-controls">
+        <div class="location-badge" id="locationBadge" title="Current GPS / Geocoded Location (Click to change)">
+          <span class="location-icon">📍</span>
+          <span id="locationText">Locating...</span>
+        </div>
         <div class="platform-badge" id="platformBadge">
           <span class="platform-icon">🖥️</span>
           <span id="platformText">Detecting Platform...</span>
@@ -56,6 +60,22 @@
         </button>
       </div>
     </header>
+
+    <!-- Location Permission Denied Prompt Banner -->
+    <div class="location-banner hidden" id="locationBanner">
+      <div class="location-banner-inner">
+        <div class="banner-title-row">
+          <span class="banner-pin">📍</span>
+          <span class="banner-heading">Where are you currently located at?</span>
+          <button type="button" class="banner-close" id="btnCloseBanner" title="Close banner">✕</button>
+        </div>
+        <p class="banner-desc">GPS permission was not granted. Tell or type your place name to synchronize your local coordinates and live weather forecast.</p>
+        <form class="banner-form" id="locationForm">
+          <input type="text" id="locationInput" class="banner-input" placeholder="Enter city (e.g. Kolkata, Mumbai, London)..." autocomplete="off" />
+          <button type="submit" class="banner-submit">Set Place</button>
+        </form>
+      </div>
+    </div>
 
     <!-- Main Agent Stage -->
     <main class="main-content">
@@ -117,7 +137,7 @@
 
         <!-- Alarm Countdown Display -->
         <div class="countdown-card" id="countdownCard">
-          <div class="countdown-header">NEXT 6:00 AM WAKE-UP IN</div>
+          <div class="countdown-header" id="countdownHeader">NEXT WAKE-UP ALARM IN</div>
           <div class="countdown-timer">
             <div class="time-block">
               <span class="time-num" id="cdHours">--</span>
@@ -134,14 +154,18 @@
               <span class="time-label">SECONDS</span>
             </div>
           </div>
-          <div class="countdown-target" id="targetAlarmTime">Target: Scheduled for 06:00:00 AM IST</div>
+          <div class="countdown-target" id="targetAlarmTime">Target: Scheduled for 06:30:00 AM IST (Sun: 7:00 AM)</div>
         </div>
 
         <!-- Quick Action Dock -->
         <div class="action-dock">
-          <button class="action-btn btn-primary" id="btnSimulateRoutine" title="Simulate the complete 6:00 AM wake up routine right now">
+          <button class="action-btn btn-primary" id="btnSimulateRoutine" title="Simulate the complete morning wake up routine right now">
             <span class="btn-icon">⚡</span>
-            <span class="btn-label">Simulate 6:00 AM Wake</span>
+            <span class="btn-label">Simulate Wake Up</span>
+          </button>
+          <button class="action-btn btn-secondary" id="btnChangeAlarm" title="Change alarm time or reset to default schedule">
+            <span class="btn-icon">⏰</span>
+            <span class="btn-label">Set Alarm Time</span>
           </button>
           <button class="action-btn btn-secondary" id="btnWeather" title="Report today's live weather forecast">
             <span class="btn-icon">⛅</span>
