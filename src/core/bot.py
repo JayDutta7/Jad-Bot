@@ -11,12 +11,17 @@ from src.core.config import (
     ALARM_MINUTE,
     GREETING_RESPONSE,
     GREETING_TRIGGER,
+    GREETING_TRIGGERS,
     SUNDAY_ALARM_HOUR,
     SUNDAY_ALARM_MINUTE,
     TIMEZONE,
     USER_TITLE,
     WAKE_RESPONSE,
     WAKE_WORDS,
+    get_greeting_response,
+    get_time_of_day,
+    get_time_of_day_greeting,
+    get_welcome_greeting,
 )
 from src.platform_util.desktop import (
     DesktopSleepPreventer,
@@ -42,8 +47,8 @@ class WakeUpBot:
         self.custom_alarm_minute: Optional[int] = None
 
     def speak_welcome_greeting(self, blocking: bool = True) -> str:
-        """Speaks the opening greeting: 'Hello Boss, how may I help you?'"""
-        welcome_text = f"Hello {USER_TITLE}, how may I help you?"
+        """Speaks the opening greeting based on local time: 'Good morning/noon/afternoon/evening Boss, how may I help you?'"""
+        welcome_text = get_welcome_greeting(self.get_current_time())
         self.voice.speak(welcome_text, blocking=blocking)
         return welcome_text
 
@@ -180,16 +185,18 @@ class WakeUpBot:
         # 1. Start ringing the device alarm
         self.alarm.start_ringing()
 
-        # 2. Wait for user to greet "Good morning"
-        print(f"[Bot] Waiting for greeting ('{GREETING_TRIGGER}') to silence alarm...")
+        # 2. Wait for user greeting to silence alarm
+        current_greeting = get_time_of_day_greeting(self.get_current_time())
+        tod = get_time_of_day(self.get_current_time())
+        print(f"[Bot] Waiting for greeting ('{current_greeting}') to silence alarm...")
         greeted = False
         start_time = time.time()
 
         while not greeted:
-            user_input = self.voice.listen("Say 'Good morning' (or type and press Enter) to turn off the alarm: ")
+            user_input = self.voice.listen(f"Say '{current_greeting}' (or type and press Enter) to turn off the alarm: ")
             cleaned = user_input.strip().lower()
 
-            if GREETING_TRIGGER in cleaned or "morning" in cleaned:
+            if any(g in cleaned for g in GREETING_TRIGGERS) or any(t in cleaned for t in ["morning", "noon", "afternoon", "evening"]):
                 greeted = True
                 self.alarm.stop_ringing()
             elif any(w in cleaned for w in ["stop", "off", "dismiss", "wake up", "quit"]):
@@ -205,11 +212,11 @@ class WakeUpBot:
                 self.alarm.stop_ringing()
                 break
 
-        # 3. Respond with configured greeting
-        set_terminal_title("🌅 Wake Up Bot - Morning Assistant")
-        self.voice.speak(GREETING_RESPONSE)
+        # 3. Respond with configured greeting based on current local time
+        set_terminal_title(f"🤖 JAD Assistant - {current_greeting}")
+        self.voice.speak(get_greeting_response(self.get_current_time()))
 
-        # 4. Morning Assistant Interaction Loop
+        # 4. Assistant Interaction Loop
         while True:
             command = self.voice.listen(
                 f"What would you like me to do, {USER_TITLE}? (e.g. 'latest news' or 'that is all')"
@@ -217,7 +224,7 @@ class WakeUpBot:
             cleaned_cmd = command.strip().lower()
 
             if any(keyword in cleaned_cmd for keyword in ["news", "headline", "headlines", "latest"]):
-                show_desktop_notification("📰 Morning News Briefing", "Fetching and reading today's top English headlines.")
+                show_desktop_notification(f"📰 {current_greeting} News Briefing", "Fetching and reading today's top English headlines.")
                 self.voice.speak(f"Fetching the latest English news for you, {USER_TITLE}...")
                 speech_text = get_morning_news_speech()
                 self.voice.speak(speech_text)
@@ -229,7 +236,7 @@ class WakeUpBot:
                 self.voice.speak(weather_data["spoken_text"])
                 self.voice.speak(f"Is there anything else I can help you with, {USER_TITLE}?")
             elif any(keyword in cleaned_cmd for keyword in ["no", "that's all", "that is all", "stop", "exit", "thank you", "thanks", "bye"]):
-                self.voice.speak(f"Have an awesome and productive day ahead, {USER_TITLE}!")
+                self.voice.speak(f"Have an awesome and productive {tod} ahead, {USER_TITLE}!")
                 break
             elif cleaned_cmd == "":
                 continue

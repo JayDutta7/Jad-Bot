@@ -36,7 +36,7 @@
 | :--- | :--- | :--- |
 | **🎙️ Wake Word Activation** | Say *"Hello Jad"*, *"Hey Jad"*, or *"Activate Jad"* to automatically wake and activate the agent hands-free. | Cross-Platform / Web |
 | **🤖 3D AI Hologram** | Real-time orbital ring animations, audio reactive waves, and dynamic state aura. | Browser / Desktop UI |
-| **👋 Spoken Welcome** | Voice greeting on launch: *"Hello Boss, how may I help you?"* | macOS say / SAPI5 |
+| **👋 Dynamic Spoken Welcome** | Voice greeting based on local time (*Good morning / noon / afternoon / evening Boss, how may I help you?*) | macOS say / SAPI5 |
 | **⏰ Adaptive Alarm** | Default 6:30 AM weekdays, 7:00 AM Sundays; adjust anytime by voice or chat. | Cross-Platform |
 | **📍 Smart Geolocation** | Automatic GPS lat/long detection with interactive place-name geocoding fallback. | HTML5 / Open-Meteo |
 | **⛅ Real-Time Weather** | Live local weather & forecasts with umbrella / hydration advice. | wttr.in / Open-Meteo |

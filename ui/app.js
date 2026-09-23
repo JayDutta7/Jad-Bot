@@ -16,7 +16,33 @@ const STATE = {
   targetAlarmIso: null,
   browserAudioActive: false,
   isListeningMic: false,
+  serverGreeting: null,
+  serverTimeOfDay: null,
 };
+
+function getTimeOfDay() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour === 12) return 'noon';
+  if (hour >= 13 && hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+function getTimeOfDayGreeting() {
+  const tod = getTimeOfDay();
+  if (tod === 'morning') return 'Good morning';
+  if (tod === 'noon') return 'Good noon';
+  if (tod === 'afternoon') return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getActiveGreeting() {
+  return STATE.serverGreeting || getTimeOfDayGreeting();
+}
+
+function getActiveTimeOfDay() {
+  return STATE.serverTimeOfDay || getTimeOfDay();
+}
 
 // DOM Elements
 const DOM = {
@@ -224,7 +250,8 @@ function setAgentState(newState) {
   DOM.agentStateBadge.className = 'agent-state-badge state-' + newState;
 
   if (newState === 'ringing') {
-    DOM.agentStateLabel.textContent = '🚨 ALARM ACTIVE • WAKE UP BOSS! (Say "Good morning")';
+    const greeting = getActiveGreeting();
+    DOM.agentStateLabel.textContent = `🚨 ALARM ACTIVE • WAKE UP BOSS! (Say "${greeting}")`;
     DOM.btnStopAlarm.classList.remove('hidden');
     DOM.footerSpokenStatus.textContent = '*** ALARM RINGING! WAKE UP! ***';
     playBrowserAlarmTone();
@@ -236,14 +263,15 @@ function setAgentState(newState) {
       DOM.agentStateLabel.textContent = '🎙️ LISTENING TO BOSS...';
       DOM.footerSpokenStatus.textContent = 'Listening to voice command...';
     } else if (newState === 'speaking') {
-      DOM.agentStateLabel.textContent = '🗣️ DELIVERING MORNING BRIEFING';
-      DOM.footerSpokenStatus.textContent = 'Speaking morning update';
+      const tod = getActiveTimeOfDay();
+      DOM.agentStateLabel.textContent = `🗣️ DELIVERING ${tod.toUpperCase()} BRIEFING`;
+      DOM.footerSpokenStatus.textContent = `Speaking ${tod} update`;
     } else if (newState === 'thinking') {
       DOM.agentStateLabel.textContent = '🧠 PROCESSING NEURAL BRIEFING...';
       DOM.footerSpokenStatus.textContent = 'Fetching and compiling news...';
     } else {
-      DOM.agentStateLabel.textContent = 'STANDBY • MONITORING DAILY 6:00 AM IST';
-      DOM.footerSpokenStatus.textContent = 'AI Standby • Ready to awaken Boss at 6:00 AM';
+      DOM.agentStateLabel.textContent = 'STANDBY • MONITORING ROUTINES';
+      DOM.footerSpokenStatus.textContent = 'AI Standby • Ready to assist Boss';
     }
   }
 }
@@ -354,6 +382,8 @@ async function fetchStatus() {
     if (data.platform) DOM.platformText.textContent = data.platform;
     if (data.user_title) STATE.userTitle = data.user_title;
     if (data.next_alarm_iso) STATE.targetAlarmIso = data.next_alarm_iso;
+    if (data.greeting) STATE.serverGreeting = data.greeting;
+    if (data.time_of_day) STATE.serverTimeOfDay = data.time_of_day;
 
     // Display target time & schedule description
     if (data.next_alarm_str && DOM.targetAlarmTime) {
@@ -408,7 +438,8 @@ fetchStatus();
 // ==============================================================================
 DOM.btnSimulateRoutine.addEventListener('click', async () => {
   setAgentState('ringing');
-  appendChatMessage('bot', `⏰ 6:00 AM Routine Triggered! Wake up ${STATE.userTitle}! Say 'Good morning' to dismiss.`);
+  const greeting = getActiveGreeting();
+  appendChatMessage('bot', `⏰ Routine Triggered! Wake up ${STATE.userTitle}! Say '${greeting}' to dismiss.`);
   try {
     await fetch('/api/trigger-routine', { method: 'POST' });
   } catch (e) {}
@@ -427,8 +458,9 @@ DOM.btnTestAlarm.addEventListener('click', async () => {
 
 DOM.btnStopAlarm.addEventListener('click', async () => {
   setAgentState('idle');
+  const greeting = getActiveGreeting();
   appendChatMessage('user', 'Dismiss Alarm');
-  appendChatMessage('bot', `Good morning ${STATE.userTitle}, alarm turned off. How can I assist you?`);
+  appendChatMessage('bot', `${greeting} ${STATE.userTitle}, alarm turned off. How can I assist you?`);
   try {
     await fetch('/api/stop-alarm', { method: 'POST' });
   } catch (e) {}
@@ -436,7 +468,8 @@ DOM.btnStopAlarm.addEventListener('click', async () => {
 
 DOM.btnFetchNews.addEventListener('click', async () => {
   setAgentState('thinking');
-  appendChatMessage('user', 'Read the latest morning news');
+  const tod = getActiveTimeOfDay();
+  appendChatMessage('user', `Read the latest ${tod} news`);
   appendChatMessage('bot', `Fetching the latest verified English news for you, ${STATE.userTitle}...`);
   try {
     const res = await fetch('/api/chat', {
@@ -564,7 +597,7 @@ function appendChatMessage(sender, text) {
 
   const author = document.createElement('div');
   author.className = 'bubble-author';
-  author.textContent = isBot ? 'J.A.D. Morning Assistant' : STATE.userTitle;
+  author.textContent = isBot ? 'J.A.D. AI Assistant' : STATE.userTitle;
 
   const textDiv = document.createElement('div');
   textDiv.className = 'bubble-text';
@@ -962,6 +995,11 @@ if (DOM.weatherPill) {
 }
 
 async function initWelcomeGreeting() {
+  const greeting = getActiveGreeting();
+  const initialBubble = document.getElementById('initialBotGreeting');
+  if (initialBubble) {
+    initialBubble.textContent = `${greeting} Boss, how may I help you?`;
+  }
   try {
     const res = await fetch('/api/welcome', { method: 'POST' });
     if (res.ok) {
@@ -971,7 +1009,7 @@ async function initWelcomeGreeting() {
   } catch (err) {
     if ('speechSynthesis' in window && !window.__jadWelcomeSpoken) {
       window.__jadWelcomeSpoken = true;
-      const u = new SpeechSynthesisUtterance('Hello Boss, how may I help you?');
+      const u = new SpeechSynthesisUtterance(`${greeting} Boss, how may I help you?`);
       window.speechSynthesis.speak(u);
     }
   }

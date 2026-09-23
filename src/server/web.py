@@ -8,7 +8,17 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 try:
-    from src.core.config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
+    from src.core.config import (
+        ALARM_FILE,
+        ALARM_HOUR,
+        ALARM_MINUTE,
+        BASE_DIR,
+        TIMEZONE,
+        USER_TITLE,
+        get_time_of_day,
+        get_time_of_day_greeting,
+        get_welcome_greeting,
+    )
     from src.platform_util.desktop import get_platform_name
     from src.services.news import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
     from src.services.weather import (
@@ -18,7 +28,17 @@ try:
         set_active_location,
     )
 except ImportError:
-    from config import ALARM_FILE, ALARM_HOUR, ALARM_MINUTE, BASE_DIR, TIMEZONE, USER_TITLE
+    from config import (
+        ALARM_FILE,
+        ALARM_HOUR,
+        ALARM_MINUTE,
+        BASE_DIR,
+        TIMEZONE,
+        USER_TITLE,
+        get_time_of_day,
+        get_time_of_day_greeting,
+        get_welcome_greeting,
+    )
     from desktop_helper import get_platform_name
     from news_service import fetch_news_via_rss, get_conversational_chat_reply, get_morning_news_speech
     from services.weather import (
@@ -218,7 +238,9 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
             "schedule_type": sched_type,
             "is_custom_alarm": is_custom,
             "custom_alarm_time": custom_time,
-            "location": active_loc
+            "location": active_loc,
+            "time_of_day": get_time_of_day(),
+            "greeting": get_time_of_day_greeting()
         }
         self._send_json_response(data)
 
@@ -243,8 +265,10 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         if bot:
             bot.alarm.stop_ringing()
             BotAPIServer.agent_state = "idle"
+            greeting = get_time_of_day_greeting()
             BotAPIServer.transcript.append({"sender": "user", "text": "Dismiss Alarm"})
-            BotAPIServer.transcript.append({"sender": "bot", "text": f"Alarm silenced. Good morning {USER_TITLE}!"})
+            BotAPIServer.transcript.append({"sender": "bot", "text": f"Alarm silenced. {greeting} {USER_TITLE}!"})
+            BotAPIServer.last_spoken_message = f"Alarm silenced. {greeting} {USER_TITLE}!"
             self._send_json_response({"status": "Alarm silenced"})
         else:
             self._send_json_response({"error": "Bot instance not initialized"}, status=500)
@@ -268,7 +292,7 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
 
     def _handle_welcome(self):
         bot = BotAPIServer.bot_instance
-        welcome_text = f"Hello {USER_TITLE}, how may I help you?"
+        welcome_text = get_welcome_greeting()
         BotAPIServer.last_spoken_message = welcome_text
         if bot:
             import threading
@@ -371,7 +395,8 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
 
         if bot and bot.alarm.is_ringing:
             bot.alarm.stop_ringing()
-            reply = f"Good morning {USER_TITLE}! Alarm silenced. How can I help you today?"
+            greeting = get_time_of_day_greeting()
+            reply = f"{greeting} {USER_TITLE}! Alarm silenced. How can I help you today?"
             BotAPIServer.agent_state = "speaking"
         elif wake_match and (len(cleaned.split()) <= 3 or cleaned in ["hello jad", "hey jad", "hi jad", "jad"]):
             reply = wake_match
@@ -383,8 +408,16 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
                 reply = bot.set_custom_alarm_time(alarm_cmd[1], alarm_cmd[2])
             else:
                 reply = f"Understood, {USER_TITLE}."
-        elif any(w in cleaned for w in ["good morning", "morning"]):
-            reply = f"Good morning {USER_TITLE}! Wishing you an energizing and productive day ahead!"
+        elif any(w in cleaned for w in [
+            "good morning", "morning",
+            "good noon", "noon",
+            "good afternoon", "afternoon",
+            "good evening", "evening",
+            "hello", "hi", "hey"
+        ]):
+            greeting = get_time_of_day_greeting()
+            tod = get_time_of_day()
+            reply = f"{greeting} {USER_TITLE}! Wishing you a wonderful {tod} ahead! How can I help you today?"
         elif any(w in cleaned for w in ["news", "headline", "headlines", "latest"]):
             reply = get_morning_news_speech()
         elif any(w in cleaned for w in ["weather", "temperature", "forecast", "climate", "rain", "umbrella", "how is the weather", "what is the weather"]):
@@ -407,7 +440,8 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         elif any(w in cleaned for w in ["that's all", "that is all", "stop", "exit", "bye", "thanks", "thank you"]):
             secs, target = bot.get_seconds_until_next_alarm() if bot else (0, None)
             time_txt = target.strftime("%I:%M %p") if target else "6:30 AM"
-            reply = f"Have an outstanding day ahead, {USER_TITLE}! I will stand by for your next wake up at {time_txt}."
+            tod = get_time_of_day()
+            reply = f"Have an outstanding {tod} ahead, {USER_TITLE}! I will stand by for your next routine at {time_txt}."
         else:
             reply = get_conversational_chat_reply(user_msg)
 

@@ -15,6 +15,8 @@ try:
         MAX_NEWS_ITEMS,
         NEWS_FEEDS,
         USER_TITLE,
+        get_time_of_day,
+        get_time_of_day_greeting,
     )
 except ImportError:
     from config import (
@@ -23,6 +25,8 @@ except ImportError:
         MAX_NEWS_ITEMS,
         NEWS_FEEDS,
         USER_TITLE,
+        get_time_of_day,
+        get_time_of_day_greeting,
     )
 
 
@@ -45,11 +49,14 @@ def fetch_news_via_gemini(api_key: Optional[str] = None) -> Optional[str]:
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={key}"
 
+    greeting = get_time_of_day_greeting()
+    tod = get_time_of_day()
+
     prompt = (
         f"You are a personal voice assistant for '{USER_TITLE}'. "
-        "Use Google Search to find today's top 5 breaking news headlines in English (including India and global). "
-        "Provide a concise, engaging, spoken morning briefing in English. "
-        "Begin with 'Good morning Boss, here is today's morning news briefing.' "
+        f"Use Google Search to find today's top 5 breaking news headlines in English (including India and global). "
+        f"Provide a concise, engaging, spoken {tod} briefing in English. "
+        f"Begin with '{greeting} Boss, here is today's {tod} news briefing.' "
         "Do NOT use markdown, asterisks, bullet points, numbering symbols, or emojis. "
         "Write in plain conversational English so a Text-to-Speech system can speak it smoothly."
     )
@@ -129,11 +136,13 @@ def fetch_news_via_rss(max_items: int = MAX_NEWS_ITEMS) -> List[str]:
 
 
 def format_rss_news_for_speech(headlines: List[str]) -> str:
-    """Formats raw RSS headlines into spoken briefing text."""
-    speech = f"Good morning {USER_TITLE}, here are today's top headlines from verified feeds. "
+    """Formats raw RSS headlines into spoken briefing text based on local time."""
+    greeting = get_time_of_day_greeting()
+    tod = get_time_of_day()
+    speech = f"{greeting} {USER_TITLE}, here are today's top headlines from verified feeds. "
     for i, headline in enumerate(headlines, 1):
         speech += f"Headline {i}: {headline}. "
-    speech += "That concludes the morning news update."
+    speech += f"That concludes the {tod} news update."
     return speech
 
 
@@ -141,22 +150,28 @@ def get_conversational_chat_reply(user_message: str) -> str:
     """Uses Gemini API to generate a concise, conversational spoken response to any user query."""
     key = GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")
     cleaned = user_message.lower().strip()
+    greeting = get_time_of_day_greeting()
+    tod = get_time_of_day()
 
     # Fast canned responses for greetings and persona questions
-    if any(cleaned == g or cleaned.startswith(g + " ") for g in ["hello", "hi", "hey", "hello jad", "hi jad", "hey jad", "hello jaat", "namaste"]):
-        return f"Hello {USER_TITLE}! I am JAD, your morning assistant. I am fully operational and ready to assist you. What can I do for you?"
+    if any(cleaned == g or cleaned.startswith(g + " ") for g in [
+        "hello", "hi", "hey", "hello jad", "hi jad", "hey jad", "hello jaat", "namaste",
+        "good morning", "good noon", "good afternoon", "good evening"
+    ]):
+        return f"{greeting} {USER_TITLE}! I am JAD, your personal assistant. I am fully operational and ready to assist you. What can I do for you?"
 
     if any(k in cleaned for k in ["how are you", "how are you doing", "how r u"]):
-        return f"I am feeling great and running at peak performance, {USER_TITLE}! Ready to help you seize the day."
+        return f"I am feeling great and running at peak performance this {tod}, {USER_TITLE}! Ready to help you seize the day."
 
     if any(k in cleaned for k in ["who are you", "what are you", "what is your name"]):
-        return f"I am JAD, your autonomous agentic morning assistant. I monitor your daily schedule, wake you up at 6:00 AM, and brief you on the latest world news."
+        return f"I am JAD, your autonomous agentic assistant. I monitor your daily schedule, alarm routines, weather, and world news briefings."
 
     # If Gemini API key is available, query Gemini for a natural spoken response
     if key:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={key}"
         sys_prompt = (
-            f"You are JAD, an intelligent, energetic personal morning assistant for '{USER_TITLE}'. "
+            f"You are JAD, an intelligent, energetic personal assistant for '{USER_TITLE}'. "
+            f"Current local time is {tod}. If greeting, address as '{greeting} Boss'. "
             "Reply conversationally in 1-2 concise, spoken English sentences without markdown or emojis. "
             f"User asks: {user_message}"
         )
