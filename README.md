@@ -56,28 +56,6 @@
 
 JAD features a cyberpunk, glassmorphic visual interface served locally via a zero-dependency Python HTTP server (`http://localhost:8000`):
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│  J.A.D. AI AGENT              [ 11:06:54 PM IST ]        [ Sleep Lock ]│
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│                          ╭───────────────╮                             │
-│                         │   ( ◉ ⚡ ◉ )    │   <-- 3D Gyroscopic Rings   │
-│                          ╰───────────────╯       & Radial Visualizer   │
-│                                                                        │
-│                [ STANDBY • MONITORING DAILY 6:00 AM IST ]              │
-│                                                                        │
-│                         07h : 14m : 22s                                │
-│                     Next Alarm: Tomorrow 6:00 AM                       │
-│                                                                        │
-│   [ ⚡ Simulate Routine ]  [ 🔔 Test Alarm ]  [ 🎙️ Talk ]  [ 📰 News ]   │
-├───────────────────────────────────┬────────────────────────────────────┤
-│ 💬 Conversational Transcript      │ 🌐 Morning Intelligence Feed       │
-│ • [Bot]: Good morning Boss...     │ • Pezeshkian says Iran won't...    │
-│ • [You]: Read the latest news     │ • Global tech sectors announce...  │
-│ [ Type a message or speak... ] 🎙️ │ [ 🔊 Read Aloud ]  [ 🔄 Refresh ]   │
-└───────────────────────────────────┴────────────────────────────────────┘
-```
 
 ---
 
