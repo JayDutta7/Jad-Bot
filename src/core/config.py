@@ -43,6 +43,8 @@ SUNDAY_ALARM_MINUTE = 0
 USER_TITLE = "Boss"
 GREETING_TRIGGER = "good morning"
 GREETING_RESPONSE = f"Good morning {USER_TITLE}, how can I help you?"
+WAKE_WORDS = ["hello jad", "hey jad", "hi jad", "jad", "activate jad"]
+WAKE_RESPONSE = f"Hello {USER_TITLE}, I am active and listening. How may I help you?"
 
 # Gemini API Configuration for Real-Time Grounded News Search
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")

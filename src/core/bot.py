@@ -15,6 +15,8 @@ from src.core.config import (
     SUNDAY_ALARM_MINUTE,
     TIMEZONE,
     USER_TITLE,
+    WAKE_RESPONSE,
+    WAKE_WORDS,
 )
 from src.platform_util.desktop import (
     DesktopSleepPreventer,
@@ -44,6 +46,12 @@ class WakeUpBot:
         welcome_text = f"Hello {USER_TITLE}, how may I help you?"
         self.voice.speak(welcome_text, blocking=blocking)
         return welcome_text
+
+    def check_wake_word(self, user_text: str) -> Optional[str]:
+        """Checks if user text triggers the wake word ('Hello Jad') and returns activation reply."""
+        if self.voice.is_wake_word(user_text):
+            return WAKE_RESPONSE
+        return None
 
     def get_current_time(self) -> datetime:
         """Returns current localized datetime in GMT +5:30."""

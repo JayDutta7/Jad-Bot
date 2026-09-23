@@ -367,10 +367,15 @@ class BotRequestHandler(SimpleHTTPRequestHandler):
         cleaned = user_msg.lower()
         alarm_cmd = bot.parse_alarm_time_command(user_msg) if bot else None
 
+        wake_match = bot.check_wake_word(user_msg) if bot else None
+
         if bot and bot.alarm.is_ringing:
             bot.alarm.stop_ringing()
             reply = f"Good morning {USER_TITLE}! Alarm silenced. How can I help you today?"
             BotAPIServer.agent_state = "speaking"
+        elif wake_match and (len(cleaned.split()) <= 3 or cleaned in ["hello jad", "hey jad", "hi jad", "jad"]):
+            reply = wake_match
+            BotAPIServer.agent_state = "listening"
         elif alarm_cmd:
             if alarm_cmd[0] == "reset":
                 reply = bot.reset_custom_alarm_time()

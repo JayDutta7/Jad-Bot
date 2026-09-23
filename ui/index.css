@@ -251,6 +251,51 @@ html, body {
   color: #cbd5e1;
 }
 
+.wake-word-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0.45rem 1rem;
+  background: rgba(0, 242, 254, 0.12);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--neon-cyan);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.wake-word-badge:hover {
+  background: rgba(0, 242, 254, 0.22);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+  transform: translateY(-1px);
+}
+
+.wake-word-badge.inactive {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-subtle);
+  color: #64748b;
+}
+
+.wake-word-badge.inactive .live-dot {
+  background: #64748b;
+  box-shadow: none;
+  animation: none;
+}
+
+.wake-icon {
+  font-size: 0.95rem;
+  animation: pulseEar 2s infinite ease-in-out;
+}
+
+@keyframes pulseEar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
 .location-badge {
   display: flex;
   align-items: center;

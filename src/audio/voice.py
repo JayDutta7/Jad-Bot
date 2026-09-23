@@ -1,15 +1,17 @@
-"""Voice Engine: Handles Speech-to-Text (STT) and Text-to-Speech (TTS) for macOS, Windows, Linux, and Android."""
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import threading
 
 try:
+    from src.core.config import WAKE_WORDS
     from src.platform_util.desktop import is_termux
 except ImportError:
     from desktop_helper import is_termux
+    WAKE_WORDS = ["hello jad", "hey jad", "hi jad", "jad", "activate jad"]
 
 
 class VoiceEngine:
@@ -159,6 +161,23 @@ class VoiceEngine:
             return text
         except (EOFError, KeyboardInterrupt):
             return "exit"
+
+    def is_wake_word(self, text: str) -> bool:
+        """
+        Detects if user spoken input contains a wake word (e.g. 'hello jad', 'hey jad', 'jad').
+        Uses exact phrase and word boundary matching to avoid false positives (e.g. 'jaded').
+        """
+        if not text:
+            return False
+        cleaned = text.strip().lower()
+        # Multi-word wake phrases
+        for phrase in ["hello jad", "hey jad", "hi jad", "activate jad", "hello chad", "hey chad"]:
+            if phrase in cleaned:
+                return True
+        # Standalone word boundary match for 'jad'
+        if re.search(r'\b(?:jad|chad)\b', cleaned):
+            return True
+        return False
 
 
 if __name__ == "__main__":

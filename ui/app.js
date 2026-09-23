@@ -61,6 +61,8 @@ const DOM = {
   btnCloseBanner: document.getElementById('btnCloseBanner'),
   countdownHeader: document.getElementById('countdownHeader'),
   btnChangeAlarm: document.getElementById('btnChangeAlarm'),
+  wakeWordBtn: document.getElementById('wakeWordBtn'),
+  wakeWordText: document.getElementById('wakeWordText'),
 };
 
 // ==============================================================================
@@ -638,12 +640,12 @@ if (SpeechRecognition) {
 }
 
 function startListening() {
+  stopWakeWordListening();
   if (speechRecognizer && !STATE.isListeningMic) {
     try {
       speechRecognizer.start();
     } catch (e) {}
   } else {
-    // Fallback focus to input
     DOM.chatInput.focus();
   }
 }
@@ -654,6 +656,8 @@ function stopListening() {
   DOM.btnVoiceMic.classList.remove('btn-primary');
   DOM.micLabel.textContent = 'Talk to Bot';
   if (STATE.agentState === 'listening') setAgentState('idle');
+  // Resume background wake word listening
+  setTimeout(startWakeWordListening, 500);
 }
 
 DOM.chatMicBtn.addEventListener('click', () => {
@@ -671,6 +675,157 @@ DOM.btnVoiceMic.addEventListener('click', () => {
     startListening();
   }
 });
+
+// ==============================================================================
+// 8.5 WAKE WORD VOICE ACTIVATION ("HELLO JAD" / "HEY JAD")
+// ==============================================================================
+let wakeWordRecognizer = null;
+let isWakeWordActive = true;
+let isActivatingFromWake = false;
+
+function playWakeActivationChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    // Two-tone cheerful cyber chime (587 Hz D5 -> 880 Hz A5)
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {}
+}
+
+function activateAgentByWakeWord(heardText = '', commandAfterWake = '') {
+  if (isActivatingFromWake) return;
+  isActivatingFromWake = true;
+
+  console.log('[Wake Word Activated]:', heardText, 'Command:', commandAfterWake);
+  playWakeActivationChime();
+
+  // Visual indication of activation
+  setAgentState('listening');
+  if (DOM.agentStateLabel) {
+    DOM.agentStateLabel.textContent = "⚡ AGENT ACTIVATED • 'HELLO JAD' HEARD";
+  }
+
+  // Display user wake utterance in chat
+  appendChatMessage('user', heardText || 'Hello Jad');
+
+  if (commandAfterWake && commandAfterWake.length > 2) {
+    // If user said wake word + immediate command (e.g. "Hello Jad what is the weather today"):
+    DOM.chatInput.value = commandAfterWake;
+    DOM.chatForm.dispatchEvent(new Event('submit'));
+    setTimeout(() => { isActivatingFromWake = false; }, 2000);
+  } else {
+    // User said "Hello Jad", agent responds aloud and begins listening for follow-up!
+    const wakeReply = `Hello ${STATE.userTitle}, how may I help you?`;
+    appendChatMessage('bot', wakeReply);
+    setAgentState('speaking');
+
+    // Speak acknowledgment
+    fetch('/api/speak', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: wakeReply }),
+    }).catch(() => {});
+
+    // After acknowledgment, automatically start listening for user's command!
+    setTimeout(() => {
+      isActivatingFromWake = false;
+      startListening();
+    }, 2400);
+  }
+}
+
+function initWakeWordListener() {
+  if (!SpeechRecognition) return;
+
+  wakeWordRecognizer = new SpeechRecognition();
+  wakeWordRecognizer.continuous = true;
+  wakeWordRecognizer.interimResults = true;
+  wakeWordRecognizer.lang = 'en-US';
+
+  wakeWordRecognizer.onresult = (event) => {
+    if (!isWakeWordActive || STATE.isListeningMic || isActivatingFromWake) return;
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const transcript = event.results[i][0].transcript.trim().toLowerCase();
+      console.log('[Wake Word stream]:', transcript);
+
+      const isWake = (
+        transcript.includes('hello jad') ||
+        transcript.includes('hey jad') ||
+        transcript.includes('hi jad') ||
+        transcript.includes('hello chad') ||
+        transcript.includes('hey chad') ||
+        transcript.includes('hello chat') ||
+        /\bjad\b/i.test(transcript)
+      );
+
+      if (isWake) {
+        const match = transcript.match(/(?:hello|hey|hi)?\s*(?:jad|chad|chat)\s*(.*)/i);
+        const followUp = match && match[1] ? match[1].trim() : '';
+
+        try { wakeWordRecognizer.stop(); } catch (e) {}
+
+        activateAgentByWakeWord(transcript, followUp);
+        break;
+      }
+    }
+  };
+
+  wakeWordRecognizer.onerror = (e) => {
+    if (isWakeWordActive && e.error !== 'not-allowed' && !STATE.isListeningMic) {
+      setTimeout(startWakeWordListening, 1200);
+    }
+  };
+
+  wakeWordRecognizer.onend = () => {
+    if (isWakeWordActive && !STATE.isListeningMic && !isActivatingFromWake) {
+      setTimeout(startWakeWordListening, 600);
+    }
+  };
+
+  startWakeWordListening();
+}
+
+function startWakeWordListening() {
+  if (!wakeWordRecognizer || !isWakeWordActive || STATE.isListeningMic || isActivatingFromWake) return;
+  try {
+    wakeWordRecognizer.start();
+  } catch (e) {}
+}
+
+function stopWakeWordListening() {
+  if (wakeWordRecognizer) {
+    try { wakeWordRecognizer.stop(); } catch (e) {}
+  }
+}
+
+if (DOM.wakeWordBtn) {
+  DOM.wakeWordBtn.addEventListener('click', () => {
+    isWakeWordActive = !isWakeWordActive;
+    if (isWakeWordActive) {
+      DOM.wakeWordBtn.classList.add('active');
+      DOM.wakeWordBtn.classList.remove('inactive');
+      DOM.wakeWordText.textContent = 'Wake Word: "Hello Jad"';
+      startWakeWordListening();
+    } else {
+      DOM.wakeWordBtn.classList.remove('active');
+      DOM.wakeWordBtn.classList.add('inactive');
+      DOM.wakeWordText.textContent = 'Wake Word: Off';
+      stopWakeWordListening();
+    }
+  });
+}
 
 // ==============================================================================
 // 9. MORNING INTELLIGENCE NEWS FEED
@@ -952,6 +1107,7 @@ if (DOM.locationBadge) {
   });
 }
 
-// Start GPS geolocation detection
+// Start GPS geolocation detection & Wake Word Voice Activation
 initGeolocation();
+initWakeWordListener();
 
