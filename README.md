@@ -1,7 +1,7 @@
 <div align="center">
 
 # ⚡ J.A.D. • Agentic AI Bot
-### *Autonomous Personal Morning Intelligence & Wake-Up Agent*
+### *Autonomous Personal Intelligence Agent*
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-00f2fe?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/)
