@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +13,7 @@
 
   <link rel="stylesheet" href="index.css">
 </head>
-<body class="theme-cosmic">
+<body data-theme="night">
   <!-- Dynamic Canvas Particle Aura -->
   <canvas id="ambientCanvas"></canvas>
 
@@ -41,6 +41,9 @@
           <span class="weather-icon" id="weatherIcon">⛅</span>
           <span class="weather-temp" id="weatherTemp">Checking Weather...</span>
         </div>
+        <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle Day/Night Theme">
+          <span class="theme-toggle-icon" id="themeToggleIcon">🌙</span>
+        </button>
       </div>
 
       <!-- System Badges & Power Management -->
@@ -261,13 +264,13 @@
     <!-- Footer Status Bar -->
     <footer class="app-footer">
       <div class="footer-left">
-        <span>⏰ Wake-Up Bot v2.0</span> • <span>GMT+5:30 (India Standard Time)</span>
+        <span>⏰ J.A.D. v2.0</span> • <span>GMT+5:30 (IST)</span>
       </div>
       <div class="footer-center" id="footerSpokenStatus">
-        AI Standby • Ready to awaken Boss at 6:00 AM
+        AI Standby • Ready to assist Boss
       </div>
       <div class="footer-right">
-        <span>Press <kbd>Space</kbd> or <kbd>Enter</kbd> to silence alarm</span>
+        <span class="theme-label" id="themeLabel">🌙 Night</span> • <kbd>Space</kbd> silence alarm
       </div>
     </footer>
   </div>

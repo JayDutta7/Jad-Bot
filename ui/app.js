@@ -7,6 +7,78 @@
 // ==============================================================================
 // 1. STATE & CONSTANTS
 // ==============================================================================
+
+// --------------- Theme Manager ---------------
+const ThemeManager = {
+  _current: 'night',
+  _autoEnabled: true,
+
+  init() {
+    // Check saved preference first, else auto-detect from local time
+    try {
+      const saved = localStorage.getItem('jad_theme');
+      if (saved === 'day' || saved === 'night') {
+        this._current = saved;
+        this._autoEnabled = false;
+        this.apply(saved);
+      } else {
+        this.applyAutoTheme();
+      }
+    } catch (e) {
+      this.applyAutoTheme();
+    }
+
+    // Re-check every 60 seconds if auto mode is enabled
+    setInterval(() => {
+      if (this._autoEnabled) this.applyAutoTheme();
+    }, 60000);
+
+    // Toggle button
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.addEventListener('click', () => this.toggle());
+    }
+  },
+
+  getAutoTheme() {
+    const hour = new Date().getHours();
+    // Day: 5 AM to 7 PM (19:00), Night: 7 PM to 5 AM
+    return (hour >= 5 && hour < 19) ? 'day' : 'night';
+  },
+
+  applyAutoTheme() {
+    if (!this._autoEnabled) return;
+    const theme = this.getAutoTheme();
+    this.apply(theme);
+  },
+
+  toggle() {
+    const next = this._current === 'night' ? 'day' : 'night';
+    this._autoEnabled = false;
+    this.apply(next);
+    try {
+      localStorage.setItem('jad_theme', next);
+    } catch (e) {}
+  },
+
+  apply(theme) {
+    this._current = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme === 'day' ? 'light' : 'dark';
+
+    const icon = document.getElementById('themeToggleIcon');
+    const label = document.getElementById('themeLabel');
+    if (icon) icon.textContent = theme === 'day' ? '☀️' : '🌙';
+    if (label) label.textContent = theme === 'day' ? '☀️ Day' : '🌙 Night';
+
+    // Notify particle canvas to update colors
+    if (window.__updateParticleTheme) window.__updateParticleTheme(theme);
+  },
+
+  get current() { return this._current; },
+};
+
 const STATE = {
   agentState: 'idle', // 'idle' | 'ringing' | 'listening' | 'thinking' | 'speaking'
   isRinging: false,
@@ -54,6 +126,7 @@ const DOM = {
   wakeLockText: document.getElementById('wakeLockText'),
   wakeLockDot: document.getElementById('wakeLockDot'),
   hologramStage: document.getElementById('hologramStage'),
+  orbCore: document.getElementById('orbCore'),
   agentStateBadge: document.getElementById('agentStateBadge'),
   agentStateLabel: document.getElementById('agentStateLabel'),
   cdHours: document.getElementById('cdHours'),
@@ -91,6 +164,9 @@ const DOM = {
   btnChangeAlarm: document.getElementById('btnChangeAlarm'),
   wakeWordBtn: document.getElementById('wakeWordBtn'),
   wakeWordText: document.getElementById('wakeWordText'),
+  themeToggleBtn: document.getElementById('themeToggleBtn'),
+  themeToggleIcon: document.getElementById('themeToggleIcon'),
+  themeLabel: document.getElementById('themeLabel'),
 };
 
 // ==============================================================================
@@ -109,21 +185,47 @@ const DOM = {
   });
 
   const particles = [];
-  const count = Math.min(80, Math.floor(width / 20));
+  const count = Math.min(90, Math.floor(width / 18));
+
+  // Theme-aware particle colors
+  let pColor1 = '0, 242, 254';
+  let pColor2 = '121, 40, 202';
+  let lineAlpha = 0.12;
+
+  window.__updateParticleTheme = function(theme) {
+    if (theme === 'day') {
+      pColor1 = '59, 130, 246';
+      pColor2 = '245, 158, 11';
+      lineAlpha = 0.06;
+    } else {
+      pColor1 = '0, 242, 254';
+      pColor2 = '121, 40, 202';
+      lineAlpha = 0.12;
+    }
+    // Update existing particle colors smoothly
+    particles.forEach(p => {
+      p.color = Math.random() > 0.5 ? pColor1 : pColor2;
+    });
+  };
 
   for (let i = 0; i < count; i++) {
     particles.push({
       x: Math.random() * width,
       y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      size: Math.random() * 2 + 1,
-      alpha: Math.random() * 0.6 + 0.2,
-      color: Math.random() > 0.5 ? '0, 242, 254' : '121, 40, 202',
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      size: Math.random() * 2.2 + 0.8,
+      alpha: Math.random() * 0.55 + 0.15,
+      color: Math.random() > 0.5 ? pColor1 : pColor2,
+      // Subtle twinkling
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+      twinklePhase: Math.random() * Math.PI * 2,
     });
   }
 
+  let time = 0;
   function render() {
+    time += 1;
     ctx.clearRect(0, 0, width, height);
 
     // Draw connecting faint lines
@@ -132,10 +234,10 @@ const DOM = {
         const dx = particles[i].x - particles[j].x;
         const dy = particles[i].y - particles[j].y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 110) {
+        if (dist < 120) {
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(0, 242, 254, ${(1 - dist / 110) * 0.12})`;
-          ctx.lineWidth = 0.6;
+          ctx.strokeStyle = `rgba(${pColor1}, ${(1 - dist / 120) * lineAlpha})`;
+          ctx.lineWidth = 0.5;
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
           ctx.stroke();
@@ -143,7 +245,7 @@ const DOM = {
       }
     }
 
-    // Draw particles
+    // Draw particles with twinkling
     for (const p of particles) {
       p.x += p.vx;
       p.y += p.vy;
@@ -152,15 +254,29 @@ const DOM = {
       if (p.y < 0) p.y = height;
       if (p.y > height) p.y = 0;
 
+      const twinkle = 0.5 + 0.5 * Math.sin(time * p.twinkleSpeed + p.twinklePhase);
+      const alpha = p.alpha * twinkle;
+
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${p.color}, ${p.alpha})`;
+      ctx.fillStyle = `rgba(${p.color}, ${alpha})`;
       ctx.fill();
+
+      // Soft glow around larger particles
+      if (p.size > 1.5) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color}, ${alpha * 0.12})`;
+        ctx.fill();
+      }
     }
 
     requestAnimationFrame(render);
   }
   render();
+
+  // Apply initial theme to particles
+  window.__updateParticleTheme(ThemeManager.getAutoTheme());
 })();
 
 // ==============================================================================
@@ -174,6 +290,25 @@ const DOM = {
   const cy = canvas.height / 2;
   let angleOffset = 0;
 
+  function getThemeColor(alpha) {
+    if (ThemeManager.current === 'day') {
+      return {
+        idle: `rgba(59, 130, 246, ${alpha})`,
+        ringing: `rgba(239, 68, 68, ${alpha})`,
+        speaking: `rgba(99, 102, 241, ${alpha})`,
+        listening: `rgba(16, 185, 129, ${alpha})`,
+        thinking: `rgba(168, 85, 247, ${alpha})`,
+      };
+    }
+    return {
+      idle: `rgba(0, 242, 254, ${alpha})`,
+      ringing: `rgba(255, 42, 95, ${alpha})`,
+      speaking: `rgba(79, 172, 254, ${alpha})`,
+      listening: `rgba(0, 245, 160, ${alpha})`,
+      thinking: `rgba(155, 81, 224, ${alpha})`,
+    };
+  }
+
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     angleOffset += 0.02;
@@ -181,22 +316,24 @@ const DOM = {
     const baseRadius = 115;
     const numPoints = 64;
 
-    // Amplitude based on current agent state
     let amplitude = 4;
-    let waveColor = 'rgba(0, 242, 254, ';
+    const colors = getThemeColor(1);
+    let waveColor;
 
     if (STATE.agentState === 'ringing') {
       amplitude = 24 + Math.sin(angleOffset * 5) * 8;
-      waveColor = 'rgba(255, 42, 95, ';
+      waveColor = colors.ringing;
     } else if (STATE.agentState === 'speaking') {
       amplitude = 16 + Math.sin(angleOffset * 4) * 6;
-      waveColor = 'rgba(79, 172, 254, ';
+      waveColor = colors.speaking;
     } else if (STATE.agentState === 'listening') {
       amplitude = 14 + Math.sin(angleOffset * 3) * 5;
-      waveColor = 'rgba(0, 245, 160, ';
+      waveColor = colors.listening;
     } else if (STATE.agentState === 'thinking') {
       amplitude = 8;
-      waveColor = 'rgba(155, 81, 224, ';
+      waveColor = colors.thinking;
+    } else {
+      waveColor = colors.idle;
     }
 
     // Outer Harmonic Ring
@@ -207,15 +344,14 @@ const DOM = {
       const r = baseRadius + wave * amplitude;
       const x = cx + Math.cos(angle) * r;
       const y = cy + Math.sin(angle) * r;
-
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.strokeStyle = waveColor + '0.6)';
+    ctx.strokeStyle = waveColor.replace(/[\d.]+\)$/, '0.6)');
     ctx.lineWidth = 1.8;
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = waveColor + '0.8)';
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = waveColor.replace(/[\d.]+\)$/, '0.7)');
     ctx.stroke();
 
     // Inner Counter Ring
@@ -226,12 +362,11 @@ const DOM = {
       const r = baseRadius - 15 + wave * (amplitude * 0.6);
       const x = cx + Math.cos(angle) * r;
       const y = cy + Math.sin(angle) * r;
-
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.closePath();
-    ctx.strokeStyle = waveColor + '0.35)';
+    ctx.strokeStyle = waveColor.replace(/[\d.]+\)$/, '0.3)');
     ctx.lineWidth = 1.2;
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -239,6 +374,32 @@ const DOM = {
     requestAnimationFrame(draw);
   }
   draw();
+})();
+
+// ==============================================================================
+// 3.5 MOUSE PARALLAX FOR HOLOGRAPHIC ORB
+// ==============================================================================
+(function initOrbParallax() {
+  const orbCore = DOM.orbCore;
+  if (!orbCore) return;
+
+  let targetX = 0, targetY = 0;
+  let currentX = 0, currentY = 0;
+
+  document.addEventListener('mousemove', (e) => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+    targetX = ((e.clientX - cx) / cx) * 12;
+    targetY = ((e.clientY - cy) / cy) * 12;
+  });
+
+  function animate() {
+    currentX += (targetX - currentX) * 0.06;
+    currentY += (targetY - currentY) * 0.06;
+    orbCore.style.transform = `rotateY(${currentX}deg) rotateX(${-currentY}deg)`;
+    requestAnimationFrame(animate);
+  }
+  animate();
 })();
 
 // ==============================================================================
@@ -631,6 +792,7 @@ DOM.chatForm.addEventListener('submit', async (e) => {
   DOM.chatInput.value = '';
   appendChatMessage('user', text);
   setAgentState('thinking');
+  showTypingIndicator();
 
   try {
     const res = await fetch('/api/chat', {
@@ -639,14 +801,16 @@ DOM.chatForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({ message: text }),
     });
     const data = await res.json();
+    removeTypingIndicator();
     setAgentState('speaking');
     appendChatMessage('bot', data.reply);
     setTimeout(() => {
       if (STATE.agentState === 'speaking') setAgentState('idle');
     }, 4000);
   } catch (err) {
+    removeTypingIndicator();
     setAgentState('idle');
-    appendChatMessage('bot', "I received your message Boss. I am standing by for 6:00 AM.");
+    appendChatMessage('bot', "I received your message Boss. I am standing by.");
   }
 });
 
@@ -1159,4 +1323,47 @@ if (DOM.locationBadge) {
 // Start GPS geolocation detection & Wake Word Voice Activation
 initGeolocation();
 initWakeWordListener();
+
+// ==============================================================================
+// 12. THEME MANAGER INITIALIZATION
+// ==============================================================================
+ThemeManager.init();
+
+// ==============================================================================
+// 13. CHAT TYPING INDICATOR
+// ==============================================================================
+function showTypingIndicator() {
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble bot-bubble';
+  bubble.id = 'typingBubble';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'bubble-avatar';
+  avatar.textContent = '🤖';
+
+  const content = document.createElement('div');
+  content.className = 'bubble-content';
+
+  const author = document.createElement('div');
+  author.className = 'bubble-author';
+  author.textContent = 'J.A.D. AI Assistant';
+
+  const indicator = document.createElement('div');
+  indicator.className = 'bubble-text typing-indicator';
+  indicator.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+  content.appendChild(author);
+  content.appendChild(indicator);
+  bubble.appendChild(avatar);
+  bubble.appendChild(content);
+
+  DOM.chatMessages.appendChild(bubble);
+  DOM.chatMessages.scrollTop = DOM.chatMessages.scrollHeight;
+  return bubble;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typingBubble');
+  if (el) el.remove();
+}
 
